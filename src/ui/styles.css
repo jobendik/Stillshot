@@ -1,0 +1,466 @@
+/* ===========================================================================
+   StillShot — diegetic UI. Monospace, high-contrast, faux-terminal.
+   =========================================================================== */
+
+:root {
+  --red: #ff1f3d;
+  --white: #f4f5f7;
+  --dim: #8a8f98;
+  --hud-opacity: 1;
+  --mono: 'SFMono-Regular', 'Consolas', 'Liberation Mono', Menlo, monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: var(--mono);
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#ui-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#ui-root button {
+  pointer-events: auto;
+}
+
+/* ---- crosshair ---------------------------------------------------------- */
+.crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  opacity: var(--hud-opacity);
+}
+.crosshair::before,
+.crosshair::after {
+  content: '';
+  position: absolute;
+  background: rgba(20, 20, 24, 0.85);
+}
+.crosshair::before {
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+.crosshair::after {
+  top: 50%;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  transform: translateY(-50%);
+}
+.crosshair.target::before,
+.crosshair.target::after {
+  background: var(--red);
+  box-shadow: 0 0 8px var(--red);
+}
+
+/* ---- generic hud blocks ------------------------------------------------- */
+.hud {
+  position: absolute;
+  color: var(--white);
+  opacity: var(--hud-opacity);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.hud.bl {
+  left: 26px;
+  bottom: 24px;
+}
+.hud.tr {
+  right: 28px;
+  top: 22px;
+  text-align: right;
+}
+.hud.br {
+  right: 28px;
+  bottom: 24px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--dim);
+}
+.hud.hint {
+  left: 50%;
+  bottom: 78px;
+  transform: translateX(-50%);
+  color: var(--white);
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.18s;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px 12px;
+  border-left: 2px solid var(--red);
+}
+.hud.hint.show {
+  opacity: var(--hud-opacity);
+}
+
+.weapon-name {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+.ammo {
+  display: flex;
+  gap: 5px;
+}
+.ammo .dot {
+  width: 9px;
+  height: 18px;
+  border-radius: 1px;
+  background: var(--dim);
+}
+.ammo .dot.full {
+  background: var(--white);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+}
+.ammo .dot.spent {
+  background: rgba(120, 120, 130, 0.25);
+}
+
+.enemies-left .num {
+  font-size: 30px;
+  font-weight: bold;
+  color: var(--red);
+}
+.enemies-left .lbl {
+  display: block;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* ---- time meter --------------------------------------------------------- */
+.time-meter {
+  left: 26px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 200px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.time-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2%;
+  background: var(--red);
+  transition: height 0.05s linear;
+}
+.time-label {
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.15em;
+}
+
+.hotswitch-status.armed {
+  color: var(--red);
+  font-weight: bold;
+}
+
+/* ---- hitmarker + vignette + banner ------------------------------------- */
+.hitmarker {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.hitmarker::before,
+.hitmarker::after {
+  content: '';
+  position: absolute;
+  background: var(--white);
+}
+.hitmarker::before {
+  left: 50%;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+.hitmarker::after {
+  top: 50%;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  transform: translateY(-50%);
+}
+
+.hud-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 220px rgba(255, 31, 61, 0);
+  transition: box-shadow 0.25s;
+}
+.hud-vignette.dead {
+  box-shadow: inset 0 0 320px rgba(255, 31, 61, 0.85);
+  background: rgba(40, 0, 6, 0.25);
+}
+
+.hud-banner {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.hud-banner.show {
+  opacity: 1;
+}
+.banner-title {
+  font-size: 52px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  color: var(--white);
+  text-transform: uppercase;
+}
+.banner-sub {
+  margin-top: 10px;
+  font-size: 16px;
+  color: var(--red);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* ---- replay overlay ----------------------------------------------------- */
+.replay-overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-4deg);
+  font-size: clamp(80px, 18vw, 240px);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: var(--red);
+  text-shadow: 6px 6px 0 #000, -2px -2px 0 #fff;
+  pointer-events: none;
+  animation: jitter 0.12s infinite alternate;
+}
+@keyframes jitter {
+  from {
+    transform: translate(-52%, -50%) rotate(-5deg) scale(1);
+  }
+  to {
+    transform: translate(-48%, -50%) rotate(-3deg) scale(1.04);
+  }
+}
+
+/* ===========================================================================
+   Faux-DOS menu / shell
+   =========================================================================== */
+.menu {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 40%, #0a0d12 0%, #000 100%);
+  color: #c9ccd2;
+  pointer-events: auto;
+  z-index: 20;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.menu::after {
+  /* scanlines */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.04) 0px,
+    rgba(255, 255, 255, 0.04) 1px,
+    transparent 2px,
+    transparent 4px
+  );
+  mix-blend-mode: overlay;
+}
+
+.boot {
+  position: absolute;
+  left: 40px;
+  top: 40px;
+  right: 40px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #d7dade;
+  white-space: pre-wrap;
+}
+.boot-continue {
+  position: absolute;
+  left: 40px;
+  bottom: 40px;
+  color: var(--red);
+  font-size: 14px;
+}
+
+.blink {
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.title-screen,
+.briefing,
+.win-screen {
+  text-align: center;
+  max-width: 760px;
+  padding: 24px;
+}
+
+.logo {
+  font-size: clamp(54px, 11vw, 120px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: var(--white);
+  line-height: 0.95;
+}
+.logo span {
+  color: var(--red);
+}
+.tagline {
+  margin-top: 6px;
+  color: var(--dim);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+.menu-list {
+  margin: 34px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 340px;
+}
+.menu-item {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--white);
+  font-family: var(--mono);
+  font-size: 16px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.menu-item .idx {
+  color: var(--red);
+  margin-right: 10px;
+}
+.menu-item:hover:not(:disabled) {
+  background: var(--red);
+  color: #000;
+  border-color: var(--red);
+}
+.menu-item:hover:not(:disabled) .idx {
+  color: #000;
+}
+.menu-item.locked {
+  color: var(--dim);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.menu-toggles {
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.toggle {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.toggle:hover {
+  color: var(--white);
+  border-color: var(--white);
+}
+
+.credits {
+  margin-top: 30px;
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 1.7;
+  letter-spacing: 0.05em;
+}
+
+.brief-head {
+  color: var(--red);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 22px;
+}
+.brief-body {
+  font-size: 20px;
+  line-height: 1.7;
+  color: var(--white);
+  white-space: pre-wrap;
+  text-align: center;
+}
+.brief-begin {
+  margin-top: 40px;
+  color: var(--red);
+  font-size: 15px;
+  letter-spacing: 0.12em;
+}
