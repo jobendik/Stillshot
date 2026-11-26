@@ -115,7 +115,7 @@ export class FXSystem {
         impact: [impact.x, impact.y, impact.z],
         dir: [dir.x, dir.y, dir.z],
         force,
-        radial: opts.radial ?? 2.2,
+        radial: opts.radial ?? 3.0,
         crack: opts.crack ?? 9,
         seed: this.nextSeed(),
         start: this.worldTime,

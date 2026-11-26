@@ -157,11 +157,11 @@ const COMPOSITE_FRAG = /* glsl */ `
     // Vignette + grain.
     col *= 1.0 - r2 * 0.34 * uLens;
 
-    // Death: the exposure fails.
+    // Death: the exposure fails — the frame blows out and burns in from the edges.
     if (uDeath > 0.001) {
       float l2 = dot(col, vec3(0.299, 0.587, 0.114));
-      col = mix(col, vec3(l2) * vec3(1.0, 0.25, 0.25), uDeath * 0.85);
-      col *= 1.0 - uDeath * smoothstep(0.05, 0.55, r2) * 0.8;
+      col = mix(col, vec3(1.0, 0.97, 0.955) * (0.72 + l2 * 0.34), uDeath * 0.72 * (1.0 - red * 0.75));
+      col = mix(col, vec3(0.86, 0.07, 0.1), uDeath * smoothstep(0.1, 0.62, r2) * 0.8);
     }
 
     col *= uFade;

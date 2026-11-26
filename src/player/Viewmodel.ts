@@ -29,12 +29,12 @@ export function idleViewState(): ViewState {
 }
 
 const REST: Record<string, [number, number, number]> = {
-  pistol: [0.23, -0.2, -0.5],
-  rifle: [0.2, -0.21, -0.44],
-  shotgun: [0.2, -0.2, -0.42],
-  nailgun: [0.22, -0.19, -0.48],
-  bat: [0.27, -0.3, -0.42],
-  katana: [0.27, -0.33, -0.4],
+  pistol: [0.22, -0.19, -0.52],
+  rifle: [0.2, -0.2, -0.62],
+  shotgun: [0.2, -0.19, -0.62],
+  nailgun: [0.21, -0.18, -0.52],
+  bat: [0.3, -0.32, -0.46],
+  katana: [0.34, -0.36, -0.46],
   orb: [0.26, -0.24, -0.5],
   fist: [0.26, -0.3, -0.42],
 };
@@ -99,9 +99,9 @@ export class Viewmodel {
     if (s.held === 'katana') {
       // Rest: blade raised across the body. Swing: a diagonal cut, right-high to left-low.
       const k = t > 0 ? ease(Math.min(1, t)) : 0;
-      m.rotation.set(0.95 - k * 2.0 + arc * 0.2, 0.35 + k * 1.3, -0.35 + k * 1.5);
-      m.position.x += -k * 0.42;
-      m.position.y += arc * 0.12 - k * 0.1 + 0.1;
+      m.rotation.set(0.82 - k * 1.9 + arc * 0.2, 0.16 + k * 1.4, -0.16 + k * 1.4);
+      m.position.x += -k * 0.5;
+      m.position.y += arc * 0.14 - k * 0.1 + 0.06;
       m.position.z += -arc * 0.12;
     } else if (s.held === 'bat') {
       const k = t > 0 ? ease(Math.min(1, t)) : 0;

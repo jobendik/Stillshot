@@ -72,7 +72,8 @@ function installHelpers() {
       const target = g.time.worldElapsed + worldSeconds;
       let i = 0;
       while (g.time.worldElapsed < target && i++ < 4000) {
-        g.time.spendAction(0.05);
+        // Spend only what is still needed, so no time is left owing afterwards.
+        g.time.spendAction(Math.min(0.02, target - g.time.worldElapsed));
         g.debugStep(1 / 60, 1);
       }
     },
@@ -422,6 +423,50 @@ const groups = {
     check('a melee swing lands if you stand in it', melee.stand.hits === 1, JSON.stringify(melee.stand));
     check('…and whiffs if you step out during the wind-up', melee.retreat.hits === 0, JSON.stringify(melee.retreat));
 
+    const walls = await page.evaluate(
+      ({ gunDef, grabDef, meleeDef }) => {
+        const g = window.__stillshot;
+        const out = {};
+        // Fire with the muzzle pressed into a thin wall: the round must not appear beyond it.
+        T.start(gunDef);
+        g.input.tap('use');
+        g.debugStep(1 / 60, 2);
+        g.input.setAction('forward', true);
+        T.step(0.5);
+        g.input.setAction('forward', false);
+        out.distToWall = Math.abs(g.player.pos.z - -1.25);
+        g.input.tap('fire');
+        g.debugStep(1 / 60, 1);
+        T.flow(0.4);
+        out.enemyAlive = g.director.enemies.length === 1 && g.director.enemies[0].alive;
+        // A weapon on the far side of a wall cannot be taken through it.
+        T.start(grabDef);
+        T.face(0, 0.6, -2.4);
+        out.grabThroughWall = g.player.grabTarget(true) !== null;
+        // A figure on the far side of a wall cannot strike through it.
+        T.start(meleeDef);
+        T.flow(3.5);
+        out.hitsThroughWall = g.player.hitsTaken;
+        return out;
+      },
+      {
+        gunDef: sandbox({
+          colliders: [{ pos: [0, 3, -1.5], size: [8, 6, 0.5], kind: 'wall' }],
+          weapons: [{ kind: 'pistol', pos: [0, 0.3, -0.5] }],
+          waves: [{ trigger: 'start', enemies: [{ pos: [0, 0, -4], yaw: Math.PI }] }],
+        }),
+        grabDef: sandbox({ colliders: [{ pos: [0, 3, -1.5], size: [8, 6, 0.5], kind: 'wall' }], weapons: [{ kind: 'pistol', pos: [0, 0.3, -2.4] }] }),
+        meleeDef: sandbox({
+          spawn: { pos: [0, 0, -0.9], yaw: 0 },
+          colliders: [{ pos: [0, 3, -1.5], size: [40, 6, 0.5], kind: 'wall' }],
+          waves: [{ trigger: 'start', enemies: [{ pos: [0, 0, -3], yaw: Math.PI }] }],
+        }),
+      },
+    );
+    check('a round fired with the muzzle against a wall does not come out the other side', walls.enemyAlive && walls.distToWall < 0.7, JSON.stringify(walls));
+    check('a weapon behind a wall cannot be taken through it', walls.grabThroughWall === false);
+    check('a figure behind a wall cannot strike through it', walls.hitsThroughWall === 0, `hits ${walls.hitsThroughWall}`);
+
     const constant = await page.evaluate((def) => {
       const g = window.__stillshot;
       T.start(def);
@@ -454,6 +499,40 @@ const groups = {
       return { inside: inside.pos.x - a0, outside: outside.pos.x - b0 };
     }, sandbox({ fields: [{ pos: [0, 1.2, -6], radius: 3, kind: 'still' }] }));
     check('a round inside a still field crawls', field.inside < field.outside * 0.1 && field.outside > 4, JSON.stringify(field));
+  },
+
+  // -------------------------------------------------------------------------
+  async audio(page) {
+    // The graph can be exercised headlessly; what it SOUNDS like cannot be judged here.
+    const a = await page.evaluate(() => {
+      const g = window.__stillshot;
+      const audio = g.audio;
+      const names = ['shoot', 'shotgun', 'nail', 'glass', 'impact', 'shatter', 'slice', 'slash', 'deflect', 'ricochet', 'throw', 'thud', 'punch', 'pickup', 'catch', 'dryfire', 'swing', 'windup', 'hotswitch', 'death', 'ui', 'whiz', 'tick', 'arrive', 'borrow', 'collect', 'repaid', 'chime', 'complete'];
+      const state = audio.ctx ? audio.ctx.state : 'none';
+      let threw = null;
+      try {
+        for (const scale of [0, 0.005, 0.3, 1, 2]) {
+          audio.setTimeScale(scale, scale === 0);
+          for (const n of names) audio.play(n, { x: 3, y: 1, z: -4 }, 1.2);
+        }
+        // Flood: far more triggers than the mixer should accept.
+        for (let i = 0; i < 400; i++) audio.play(i % 2 ? 'impact' : 'shatter', { x: i % 7, y: 1, z: -3 });
+        audio.setHold(true);
+        audio.setHold(false);
+        audio.setPulse(true);
+        audio.update();
+        audio.setPulse(false);
+      } catch (e) {
+        threw = String(e);
+      }
+      return { state, threw, voices: audio.voices };
+    });
+    check('the audio context is running', a.state === 'running', a.state);
+    check('every sound can be triggered at every time scale without error', a.threw === null, a.threw ?? '');
+    check('the mixer caps simultaneous voices', a.voices <= 46, `${a.voices} voices after flooding`);
+    await page.waitForTimeout(5200);
+    const after = await page.evaluate(() => window.__stillshot.audio.voices);
+    check('voices are released when sounds end', after === 0, `${after} still held`);
   },
 
   // -------------------------------------------------------------------------

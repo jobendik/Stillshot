@@ -216,15 +216,41 @@ export function makeCrystalMaterial(opts: CrystalOptions): ShaderMaterial {
   return mat;
 }
 
+/**
+ * Depth-only twin of the shard shader, so debris hanging in the air casts a
+ * shadow on the floor beneath it (which is most of what makes it read as a
+ * sculpture rather than a sprite).
+ */
+export function makeShardDepthMaterial(start: number, life: number): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: {
+      uTime: CrystalGlobals.uTime,
+      uBounds: CrystalGlobals.uBounds,
+      uFloorY: CrystalGlobals.uFloorY,
+      uStart: { value: start },
+      uLife: { value: life },
+    },
+    vertexShader: VERT,
+    fragmentShader: /* glsl */ `
+      #include <packing>
+      varying float vFade;
+      void main() {
+        if (vFade > 0.6) discard;
+        gl_FragColor = packDepthToRGBA(gl_FragCoord.z);
+      }`,
+    defines: { SHARDS: '' },
+  });
+}
+
 /** The named looks. Colours are authored in sRGB and converted by three. */
 export type CrystalTone = 'red' | 'amber' | 'ink' | 'glass' | 'white';
 
 export function crystalFor(tone: CrystalTone, shards: boolean): ShaderMaterial {
   switch (tone) {
     case 'red':
-      return makeCrystalMaterial({ color: new Color(0xe5122b), core: new Color(0xff4a2a), glow: 1.5, rim: 0.3, shards });
+      return makeCrystalMaterial({ color: new Color(0xde0f28), core: new Color(0xff3312), glow: 1.15, rim: 0.3, shards });
     case 'amber':
-      return makeCrystalMaterial({ color: new Color(0xe5122b), core: new Color(0xffa23a), glow: 2.6, rim: 0.3, shards });
+      return makeCrystalMaterial({ color: new Color(0xde0f28), core: new Color(0xffa23a), glow: 2.4, rim: 0.3, shards });
     case 'ink':
       return makeCrystalMaterial({ color: new Color(0x0c0c10), core: new Color(0x30323c), glow: 0.5, rim: 0.55, spec: 1.4, shards });
     case 'white':

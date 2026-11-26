@@ -343,7 +343,12 @@ export class Enemy {
 
   private inReach(): boolean {
     const player = this.ctx.player;
-    return this.distXZ(this.pos, player.pos) <= ENEMY_MELEE_REACH && Math.abs(player.pos.y - this.pos.y) < 1.5;
+    if (this.distXZ(this.pos, player.pos) > ENEMY_MELEE_REACH || Math.abs(player.pos.y - this.pos.y) >= 1.5) return false;
+    // Not through a wall: needs an eye-to-eye line (over a sill counts).
+    const eye = this.eye;
+    const d = _b.subVectors(player.headPos, eye);
+    const dist = d.length();
+    return dist < 1e-3 || this.ctx.level.rayToSolid(eye, d.multiplyScalar(1 / dist), dist) >= dist - 0.05;
   }
 
   /** A committed melee swing: wind-up → strike → recovery. */
@@ -576,9 +581,9 @@ export class Enemy {
     _a.copy(this.teleFrom);
     _b.copy(this.teleFrom).addScaledVector(this.teleDir, len);
     const s = this.teleStrength;
-    const a = 0.12 + 0.55 * s * s;
-    streaks.line(_a, _b, 0.012 + 0.012 * s, [2.4, 0.1, 0.12, a], [2.4, 0.1, 0.12, a * 0.25]);
-    streaks.glow(_a, 0.05 + 0.1 * s, [3, 0.4, 0.3, 0.5 * s]);
+    const a = 0.22 + 0.6 * s * s;
+    streaks.line(_a, _b, 0.016 + 0.02 * s, [2.4, 0.1, 0.12, a], [2.4, 0.1, 0.12, a * 0.3]);
+    streaks.glow(_a, 0.06 + 0.12 * s, [3, 0.4, 0.3, 0.3 + 0.5 * s]);
   }
 
   get weaponKind(): string | null {

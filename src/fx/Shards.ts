@@ -1,7 +1,7 @@
 import { BufferAttribute, BufferGeometry, Matrix4, Mesh, type Scene, type ShaderMaterial, Vector3 } from 'three';
 import { makeRng } from '@/core/Context';
 import { GRAVITY, SHARD_LIFETIME } from '@/config/constants';
-import { CrystalGlobals, type CrystalTone, crystalFor } from './Crystal';
+import { CrystalGlobals, type CrystalTone, crystalFor, makeShardDepthMaterial } from './Crystal';
 import { type Poly, type TriSoup, boxPoly, insidePoly, polyBounds, triangulate, voronoi } from './Poly';
 
 /**
@@ -140,6 +140,7 @@ export function warmShardTemplates(): void {
 interface Burst {
   mesh: Mesh;
   mat: ShaderMaterial;
+  depth: ShaderMaterial | null;
   end: number;
   tris: number;
 }
@@ -154,6 +155,8 @@ export class ShardSystem {
   private readonly bursts: Burst[] = [];
   /** Hard cap on concurrent bursts; the oldest is dropped first. */
   maxBursts = 36;
+  /** Whether debris casts shadows. */
+  shadows = true;
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -221,7 +224,7 @@ export class ShardSystem {
         _c.copy(soup.centroid).applyMatrix4(_m);
 
         const d = _c.distanceTo(impact);
-        const fall = 1 / (1 + (d / 0.42) * (d / 0.42));
+        const fall = 1 / (1 + (d / 0.55) * (d / 0.55));
         vel
           .copy(dir)
           .multiplyScalar(spec.force * (0.18 + 0.82 * fall) * (0.6 + rng() * 0.6));
@@ -229,7 +232,7 @@ export class ShardSystem {
         const pl = _p.length();
         if (pl > 1e-4) vel.addScaledVector(_p, (spec.radial * (0.3 + 0.7 * fall) * (0.5 + rng())) / pl);
         vel.x += (rng() - 0.5) * 1.1;
-        vel.y += rng() * 1.3 + fall * 1.2;
+        vel.y += rng() * 1.6 + fall * 1.6;
         vel.z += (rng() - 0.5) * 1.1;
 
         axis.set(rng() - 0.5, rng() - 0.5, rng() - 0.5);
@@ -287,8 +290,14 @@ export class ShardSystem {
     const mesh = new Mesh(geo, mat);
     mesh.frustumCulled = false; // vertices are displaced on the GPU
     mesh.renderOrder = spec.tone === 'glass' ? 3 : 0;
+    let depth: ShaderMaterial | null = null;
+    if (this.shadows && spec.tone !== 'glass') {
+      depth = makeShardDepthMaterial(spec.start, life);
+      mesh.customDepthMaterial = depth;
+      mesh.castShadow = true;
+    }
     this.scene.add(mesh);
-    this.bursts.push({ mesh, mat, end: spec.start + life + 0.5, tris: verts / 3 });
+    this.bursts.push({ mesh, mat, depth, end: spec.start + life + 0.5, tris: verts / 3 });
 
     while (this.bursts.length > this.maxBursts) this.remove(0);
   }
@@ -305,6 +314,7 @@ export class ShardSystem {
     this.scene.remove(b.mesh);
     b.mesh.geometry.dispose();
     b.mat.dispose();
+    b.depth?.dispose();
     this.bursts.splice(i, 1);
   }
 

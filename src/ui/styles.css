@@ -394,11 +394,11 @@ button {
   text-transform: uppercase;
 }
 .banner.dead .title {
-  color: var(--paper);
+  color: var(--ink);
 }
 .banner.dead .sub,
 .banner.dead .kicker {
-  color: rgba(241, 241, 238, 0.8);
+  color: var(--ink);
 }
 .banner.dead .sub b {
   color: var(--red);

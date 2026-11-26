@@ -7,7 +7,7 @@
 import { chromium } from 'playwright';
 import { preview } from 'vite';
 
-export const GL_ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];
+export const GL_ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', '--enable-precise-memory-info'];
 
 /** Serve the production build (run `npm run build` first). Returns { url, close }. */
 export async function serve(port = 4173) {

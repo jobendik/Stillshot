@@ -1,6 +1,5 @@
 import { BoxGeometry, CylinderGeometry, Group, IcosahedronGeometry, Mesh, MeshStandardMaterial, type Object3D } from 'three';
 import type { WeaponKind } from '@/types';
-import { PALETTE } from '@/config/palette';
 
 /**
  * Procedural models for everything you can pick up. Interactive objects are
@@ -10,9 +9,9 @@ import { PALETTE } from '@/config/palette';
 
 /** Ink: anything you can hold. Slightly glossy so edges catch the key light. */
 export const inkMaterial = new MeshStandardMaterial({
-  color: PALETTE.ink,
-  roughness: 0.32,
-  metalness: 0.35,
+  color: 0x16161b,
+  roughness: 0.55,
+  metalness: 0,
   flatShading: true,
 });
 

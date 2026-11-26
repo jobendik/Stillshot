@@ -333,8 +333,9 @@ export class Player {
     const shots = weapon.update(ctx.time.subjectiveDt, trigger);
     if (shots <= 0) return;
 
-    const origin = this._o.copy(this.headPos).addScaledVector(this.aimDir, 0.45).addScaledVector(this.aimRight, 0.07);
-    origin.y -= 0.06;
+    const origin = this.muzzle(0.45);
+    origin.addScaledVector(this.aimRight, 0.07 * this.muzzleClear);
+    origin.y -= 0.06 * this.muzzleClear;
     for (let s = 0; s < shots; s++) {
       const pellets = def.fireMode === 'spread' ? def.pelletCount : 1;
       for (let i = 0; i < pellets; i++) {
@@ -387,6 +388,8 @@ export class Player {
       const dist = to.length();
       if (dist > MELEE_RANGE + e.radius) continue;
       if (to.multiplyScalar(1 / Math.max(dist, 1e-4)).dot(fwd) < 0.45) continue;
+      // No striking through walls (over a sill or through a window is fine).
+      if (this.blocked(e.pos.x, e.pos.y + 1.62, e.pos.z)) continue;
       inArc.push(e);
       if (dist < nearestD) {
         nearestD = dist;
@@ -425,7 +428,7 @@ export class Player {
 
   private throwHeld(): void {
     if (this.held.type === 'fists') return;
-    const origin = this._o.copy(this.headPos).addScaledVector(this.aimDir, 0.5);
+    const origin = this.muzzle(0.5);
     if (this.held.type === 'weapon') {
       this.ctx.thrown.throwWeapon(this.held.weapon.kind, origin, this.aimDir, this.held.weapon.ammo);
     } else {
@@ -438,14 +441,37 @@ export class Player {
     this.setHeld({ type: 'fists' });
   }
 
+  /**
+   * Where something leaves the player's hands: `reach` metres along the aim, or
+   * just short of whatever solid is closer than that — so nothing is ever
+   * spawned inside (or beyond) a wall the player is pressed against.
+   */
+  private muzzle(reach: number): Vector3 {
+    const hit = this.ctx.level.rayToSolid(this.headPos, this.aimDir, reach + 0.1);
+    this.muzzleClear = hit >= reach + 0.1 ? 1 : 0;
+    const d = this.muzzleClear ? reach : Math.max(0.02, hit - 0.08);
+    return this._o.copy(this.headPos).addScaledVector(this.aimDir, d);
+  }
+
+  private muzzleClear = 1;
+
+  /** Is there solid architecture between the player's eyes and a point? */
+  private blocked(x: number, y: number, z: number): boolean {
+    const d = this._v.set(x - this.headPos.x, y - this.headPos.y, z - this.headPos.z);
+    const dist = d.length();
+    if (dist < 1e-3) return false;
+    return this.ctx.level.rayToSolid(this.headPos, d.multiplyScalar(1 / dist), dist) < dist - 0.05;
+  }
+
   /** What the crosshair (or, failing that, proximity) would pick up right now. */
   grabTarget(allowNearby: boolean): GroundItem | null {
     const level = this.ctx.level;
     const aimed = level.aimedItem(this.headPos, this.aimDir, GRAB_REACH);
-    if (aimed) return aimed;
+    if (aimed && !this.blocked(aimed.pos.x, aimed.pos.y, aimed.pos.z)) return aimed;
     if (!allowNearby) return null;
     this._v.set(this.pos.x, this.pos.y + 0.9, this.pos.z);
-    return level.nearestItem(this._v, PICKUP_RANGE);
+    const near = level.nearestItem(this._v, PICKUP_RANGE);
+    return near && !this.blocked(near.pos.x, Math.max(near.pos.y, this.pos.y + 0.3), near.pos.z) ? near : null;
   }
 
   private tryGrab(allowNearby: boolean): boolean {

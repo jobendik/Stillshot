@@ -96,6 +96,8 @@ export class Game {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
+    // Count draw calls across every pass of a frame, not just the last one.
+    this.renderer.info.autoReset = false;
 
     this.camera = new PerspectiveCamera(this.store.values.fov, window.innerWidth / window.innerHeight, 0.04, 300);
     this.scene.add(this.camera);
@@ -595,7 +597,10 @@ export class Game {
     this.perf.cpuMs = performance.now() - t0;
     this.perf.maxCpuMs = Math.max(this.perf.maxCpuMs, this.perf.cpuMs);
     this.perf.frames++;
-    if (render) this.postfx.render(this.scene, this.camera, Math.min(rawDt, 0.1));
+    if (render) {
+      this.renderer.info.reset();
+      this.postfx.render(this.scene, this.camera, Math.min(rawDt, 0.1));
+    }
   }
 
   private syncGlobals(worldTime: number): void {

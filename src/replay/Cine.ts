@@ -135,9 +135,13 @@ export function buildEdit(rec: Recording, level: Level, reducedMotion: boolean):
     return new Vector3(f.player.x, f.player.y + 1.2, f.player.z);
   };
 
-  // 1. A shot for every kill.
+  // 1. A shot for every kill. Coverage rotates so no two kills in a row are
+  //    framed the same way unless the action itself calls for it.
   const killShots: Shot[] = [];
-  let alt = 0;
+  const handRotation: ShotType[] = reducedMotion ? ['wide', 'fp'] : ['chase', 'impact', 'wide', 'fp'];
+  const gunRotation: ShotType[] = ['impact', 'wide', 'fp'];
+  let handN = 0;
+  let gunN = 0;
   for (let i = 0; i < kills.length; i++) {
     const k = kills[i];
     const last = i === kills.length - 1;
@@ -146,10 +150,12 @@ export function buildEdit(rec: Recording, level: Level, reducedMotion: boolean):
     if (!reducedMotion && k.bulletId !== null && k.flight >= 0.2) {
       shot = { type: 'round', t0: k.spawnTau - 0.04, t1: k.tau + tail, focus: k.pos, bulletId: k.bulletId };
     } else if (k.cause === 'melee' || k.cause === 'thrown' || k.cause === 'transfer') {
-      shot = { type: reducedMotion ? 'wide' : 'chase', t0: k.tau - 0.8, t1: k.tau + tail, focus: k.pos };
+      shot = { type: handRotation[handN++ % handRotation.length], t0: k.tau - 0.8, t1: k.tau + tail, focus: k.pos };
     } else {
-      shot = { type: alt++ % 2 === 0 ? 'impact' : 'wide', t0: k.tau - 0.55, t1: k.tau + tail, focus: k.pos };
+      shot = { type: gunRotation[gunN++ % gunRotation.length], t0: k.tau - 0.55, t1: k.tau + tail, focus: k.pos };
     }
+    // The last figure to fall is always seen from outside.
+    if (last && shot.type === 'fp') shot.type = 'impact';
     shot.t0 = Math.max(0, shot.t0);
     shot.t1 = Math.min(duration, shot.t1);
     killShots.push(shot);
@@ -171,32 +177,52 @@ export function buildEdit(rec: Recording, level: Level, reducedMotion: boolean):
     merged.push(s);
   }
 
-  // 3. Fill everything else with alternating coverage.
+  // 3. Fill everything else, always choosing something the neighbours are not.
   const shots: Shot[] = [];
   let cursor = 0;
   let cover = 0;
-  const fill = (from: number, to: number): void => {
+  const fillers: ShotType[] = reducedMotion ? ['fp', 'wide'] : ['fp', 'chase', 'wide'];
+  const fill = (from: number, to: number, nextType: ShotType | null): void => {
     let t = from;
     while (to - t > 0.05) {
       const remaining = to - t;
       const len = remaining < 5.5 ? remaining : 3.6;
-      let type: ShotType;
-      if (shots.length === 0 && !reducedMotion) type = 'wide'; // establishing shot
-      else type = cover++ % 2 === 0 ? 'fp' : reducedMotion ? 'wide' : 'chase';
+      const isLast = remaining < 5.5;
+      const prevType = shots.length > 0 ? shots[shots.length - 1].type : null;
+      let type: ShotType = 'fp';
+      if (shots.length === 0 && !reducedMotion) {
+        type = 'wide'; // establishing shot
+      } else {
+        for (let tries = 0; tries < fillers.length; tries++) {
+          type = fillers[cover++ % fillers.length];
+          if (type !== prevType && !(isLast && type === nextType)) break;
+        }
+      }
       const tEnd = shots.length === 0 ? Math.min(to, t + Math.min(len, 1.8)) : t + len;
       shots.push({ type, t0: t, t1: tEnd });
       t = tEnd;
     }
   };
   for (const s of merged) {
-    if (s.t0 - cursor > 0.8) fill(cursor, s.t0);
+    if (s.t0 - cursor > 0.8) fill(cursor, s.t0, s.type);
     else if (shots.length > 0) shots[shots.length - 1].t1 = s.t0;
     else s.t0 = 0;
     shots.push(s);
     cursor = s.t1;
   }
-  if (duration - cursor > 0.8 || shots.length === 0) fill(cursor, duration);
+  if (duration - cursor > 0.8 || shots.length === 0) fill(cursor, duration, null);
   else shots[shots.length - 1].t1 = duration;
+
+  // A cut between two shots of the same moving kind is no cut at all: join them.
+  for (let i = shots.length - 1; i > 0; i--) {
+    const a = shots[i - 1];
+    const b = shots[i];
+    if (a.type === b.type && (a.type === 'fp' || a.type === 'chase')) {
+      a.t1 = b.t1;
+      a.focus = a.focus ?? b.focus;
+      shots.splice(i, 1);
+    }
+  }
 
   // 4. Place the static cameras.
   for (const s of shots) {

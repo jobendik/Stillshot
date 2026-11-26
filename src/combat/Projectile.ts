@@ -249,7 +249,7 @@ export class ProjectileSystem {
             return false;
           }
           const cause: KillCause = p.faction === 'player' ? (p.pierced.size > 0 ? 'collateral' : p.cause) : 'friendly';
-          e.kill(point.clone(), dir, cause, 5.5);
+          e.kill(point.clone(), dir, cause, 7.5);
           if (p.faction === 'player') ctx.bus.emit('hitmarker', {});
           if (p.piercing) {
             p.pierced.add(e.id);

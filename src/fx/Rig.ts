@@ -68,7 +68,7 @@ const PART_SPECS: Record<string, PartSpec> = {
   foreArm: { poly: () => lathe(5, [[-0.3, 0.025], [-0.16, 0.05], [0.0, 0.045]]), cells: 4 },
   thigh: { poly: () => lathe(5, [[-0.42, 0.06], [-0.2, 0.085], [0.0, 0.08]]), cells: 5 },
   shin: { poly: () => lathe(5, [[-0.46, 0.02], [-0.4, 0.045], [-0.2, 0.065], [0.0, 0.06]]), cells: 5 },
-  bar: { poly: () => boxPoly(0.12, 0.022, 0.022), cells: 2 },
+  bar: { poly: () => boxPoly(0.15, 0.04, 0.04), cells: 2 },
   slab: { poly: () => boxPoly(0.86, 1.2, 0.05), cells: 22 },
   orb: { poly: () => lathe(7, [[-1, 0], [-0.62, 0.78], [0, 1], [0.62, 0.78], [1, 0]]), cells: 12 },
   block: { poly: () => boxPoly(1, 1, 1), cells: 9 },
@@ -164,13 +164,13 @@ export class FigureRig {
 
     if (kind === 'constant') {
       // A ring of bars that turns at a steady rate no matter what time is doing.
-      this.halo.position.y = 0.2;
+      this.halo.position.y = 0.19;
       this.head.add(this.halo);
       for (let i = 0; i < HALO_BARS; i++) {
         const holder = new Group();
         holder.rotation.y = (i / HALO_BARS) * Math.PI * 2;
         const mesh = new Mesh(partGeometry('bar'), material);
-        mesh.position.set(0, 0, 0.27);
+        mesh.position.set(0, 0, 0.29);
         mesh.castShadow = true;
         holder.add(mesh);
         this.halo.add(holder);
@@ -267,7 +267,7 @@ export class FigureRig {
 
     // Right arm: swing ↔ aim ↔ strike.
     const swing = s * 0.55 * m;
-    let rx = lerp(swing, Math.PI / 2 + p.aimPitch + p.recoil * 0.4, p.aim);
+    let rx = lerp(swing, Math.PI / 2 + p.aimPitch + p.recoil * 0.13, p.aim);
     rx = lerp(rx, 2.75, wind) - hit * 2.2;
     const re = lerp(lerp(0.25 + 0.55 * m, 0.06, p.aim), 0.9, wind) - hit * 0.7;
     this.shoulderR.rotation.set(rx, 0, 0.06 + stag * 0.9 + (twoHanded ? p.aim * 0.2 : 0));

@@ -317,6 +317,8 @@ export class Menu {
     sheet.className = 'sheet';
     sheet.innerHTML = '<h2>settings</h2><div class="kicker">saved on this device</div>';
     this.buildSettings(sheet);
+    sheet.addEventListener('click', (e) => e.stopPropagation());
+    this.overlay.onclick = null;
     const row = document.createElement('div');
     row.className = 'btn-row';
     row.appendChild(
@@ -346,11 +348,15 @@ export class Menu {
       button('btn', 'back to the archive', () => this.h.onQuit()),
     );
     sheet.appendChild(row);
+    sheet.addEventListener('click', (e) => e.stopPropagation());
     this.overlay.appendChild(sheet);
+    // Clicking anywhere outside the sheet resumes too.
+    this.overlay.onclick = () => this.h.onResume();
     this.overlay.classList.add('show');
   }
 
   hidePause(): void {
+    this.overlay.onclick = null;
     this.overlay.classList.remove('show');
     this.overlay.innerHTML = '';
   }

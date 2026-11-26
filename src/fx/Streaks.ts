@@ -1,4 +1,5 @@
 import {
+  DoubleSide,
   DynamicDrawUsage,
   InstancedBufferAttribute,
   InstancedBufferGeometry,
@@ -109,6 +110,8 @@ export class StreakRenderer {
       transparent: true,
       depthWrite: false,
       blending: NormalBlending,
+      // The ribbon is built to face the camera from either side.
+      side: DoubleSide,
     });
     this.mesh = new Mesh(this.geo, mat);
     this.mesh.frustumCulled = false;
