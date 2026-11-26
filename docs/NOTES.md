@@ -15,7 +15,7 @@ Problems found by reading and by measurement:
 | Holding a katana made you immune from the front | Always-on 1.1 m slice sphere |
 | Enemy melee was an invisible timer | 0.35 s inside 1.7 m = death, no animation, no line-of-sight test |
 | Hotswitch worked through walls and destroyed your weapon and theirs | No LOS test |
-| With CRT on, the image was displayed un-encoded (linear shown as sRGB) | Scene → render target → custom quad with no colour-space conversion; it is why the "white" world in `docs/before/play.png` is grey |
+| With CRT on, the image was displayed un-encoded (linear shown as sRGB) | Scene → render target → custom quad with no colour-space conversion; it is why the "white" world in `docs/before/play.jpg` is grey |
 | Each transient light was added/removed from the scene | Changes the light count, which forces three.js to recompile lit shaders |
 | Each enemy, weapon and bullet allocated its own geometry | Disposed again on death |
 | Replay stored camera, enemy position/yaw and bullet positions only | No poses, weapons, shatters, glass, sounds, thrown objects; enemies/bullets were not interpolated |

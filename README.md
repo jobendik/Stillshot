@@ -6,12 +6,12 @@ A browser-native temporal action game. The world only moves when you do — ever
 
 TypeScript · three.js · Vite. No game engine and no art, audio or font files: every model, shader, animation and sound is generated in code.
 
-![A wall of rounds, seen from inside borrowed time](docs/after/06_negative.png)
+![A wall of rounds, seen from inside borrowed time](docs/after/06_negative.jpg)
 
 | | |
 | --- | --- |
-| ![Rounds in the air with their trajectories](docs/after/10_rounds_in_the_air.png) | ![A figure coming apart, suspended](docs/after/11_fracture_suspended.png) |
-| ![The replay: pursuit shot](docs/after/15_replay_pursuit.png) | ![The replay: witness shot](docs/after/16_replay_witness.png) |
+| ![Rounds in the air with their trajectories](docs/after/10_rounds_in_the_air.jpg) | ![A figure coming apart, suspended](docs/after/11_fracture_suspended.jpg) |
+| ![The replay: pursuit shot](docs/after/15_replay_pursuit.jpg) | ![The replay: witness shot](docs/after/16_replay_witness.jpg) |
 
 More in [`docs/after/`](docs/after) (regenerate with `npm run capture`); the original build is in [`docs/before/`](docs/before).
 

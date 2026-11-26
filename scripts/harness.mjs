@@ -45,5 +45,6 @@ export async function openGame(browser, url, { width = 1280, height = 720, stora
 /** Render the current state and save a screenshot. */
 export async function shot(page, path) {
   await page.evaluate(() => window.__stillshot.debugStep(0, 1, true));
-  await page.screenshot({ path, timeout: 90000 });
+  const jpeg = path.endsWith('.jpg');
+  await page.screenshot({ path, timeout: 90000, type: jpeg ? 'jpeg' : 'png', ...(jpeg ? { quality: 90 } : {}) });
 }

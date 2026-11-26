@@ -105,7 +105,7 @@ const FIRST_LIGHT: LevelDef = {
   abilities: { hotswitch: false, borrow: false },
   hints: [
     { when: 0, text: 'move, and time moves. stop, and it holds.' },
-    { when: 'armed', text: 'left mouse — fire. every shot spends a little time.' },
+    { when: 'armed', text: 'left mouse — use it. right mouse — throw it. every action spends a little time.' },
     { when: 'bullet-near', text: 'you can see a round coming. step out of its line.' },
     { when: 'empty', text: 'empty. right mouse — throw it at someone.' },
   ],
