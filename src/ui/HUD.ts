@@ -11,6 +11,15 @@ interface Arrival {
 
 const MAX_THREATS = 8;
 
+const CALLOUT: Partial<Record<string, string>> = {
+  split: 'split kill',
+  returned: 'returned',
+  collateral: 'collateral',
+  friendly: 'by their own',
+  ricochet: 'ricochet',
+  thrown: 'thrown',
+};
+
 /**
  * Heads-up display. Plain DOM over the canvas, deliberately sparse:
  *
@@ -47,6 +56,8 @@ export class HUD {
   private readonly loanFill: HTMLElement;
   private readonly banner: HTMLDivElement;
   private readonly stampEl: HTMLDivElement;
+  private readonly callout: HTMLDivElement;
+  private calloutTimer = 0;
 
   private hitTimer = 0;
   private bannerTimer = 0;
@@ -114,8 +125,9 @@ export class HUD {
 
     this.banner = el('div', 'banner');
     this.stampEl = el('div', 'stamp');
+    this.callout = el('div', 'callout');
 
-    this.root.append(this.stampEl, this.crosshair, threats, this.hitmarker, tl, tr, bl, br, this.prompt, this.hint, this.loan, this.banner);
+    this.root.append(this.stampEl, this.crosshair, threats, this.hitmarker, tl, tr, bl, br, this.prompt, this.callout, this.hint, this.loan, this.banner);
     parent.appendChild(this.root);
     this.bind();
     this.setVisible(false);
@@ -124,10 +136,18 @@ export class HUD {
   private bind(): void {
     const bus = this.ctx.bus;
     bus.on('hitmarker', () => (this.hitTimer = 0.2));
-    bus.on('enemy:killed', () => {
+    bus.on('enemy:killed', (p) => {
       this.hitTimer = 0.2;
       this.trigger('first-kill');
+      // Name the unusual ones: the game should notice when you do something clever.
+      const word = CALLOUT[p.cause];
+      if (word) this.say(word);
     });
+    bus.on('pickup', (p) => {
+      if (p.caught) this.say('caught');
+    });
+    bus.on('bullet:split', () => this.say('split'));
+    bus.on('bullet:returned', () => this.say('returned'));
     bus.on('enemy:spawned', (p) => this.arrivals.push({ x: p.x, z: p.z, ttl: 2.2 }));
     bus.on('hint', (p) => this.showHint(p.text, p.ms ?? 2600));
     bus.on('weapon:empty', () => {
@@ -163,6 +183,8 @@ export class HUD {
     this.lastRemaining = -1;
     this.hint.classList.remove('show');
     this.hintTimer = 0;
+    this.callout.classList.remove('show');
+    this.calloutTimer = 0;
     this.hideBanner();
     this.stamp(null);
     this.root.classList.remove('negative');
@@ -191,6 +213,15 @@ export class HUD {
     this.hint.textContent = text;
     this.hint.classList.add('show');
     this.hintTimer = ms / 1000;
+  }
+
+  /** A one-word acknowledgement under the crosshair. */
+  private say(word: string): void {
+    this.callout.textContent = word;
+    this.callout.classList.remove('show');
+    void this.callout.offsetWidth;
+    this.callout.classList.add('show');
+    this.calloutTimer = 1.3;
   }
 
   /** The big word. `null` clears it. */
@@ -326,6 +357,10 @@ export class HUD {
       if (this.hintTimer <= 0) this.hint.classList.remove('show');
     }
 
+    if (this.calloutTimer > 0) {
+      this.calloutTimer -= realDt;
+      if (this.calloutTimer <= 0) this.callout.classList.remove('show');
+    }
     if (this.hitTimer > 0) {
       this.hitTimer -= realDt;
       this.hitmarker.style.opacity = `${Math.max(0, this.hitTimer / 0.2)}`;

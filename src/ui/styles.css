@@ -318,6 +318,43 @@ button {
   opacity: 0.85;
 }
 
+.callout {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 58px);
+  transform: translateX(-50%);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--red);
+  white-space: nowrap;
+  opacity: 0;
+  text-shadow: 0 0 8px rgba(241, 241, 238, 0.9);
+}
+.callout.show {
+  opacity: 1;
+  animation: callout 1.3s ease-out forwards;
+}
+@keyframes callout {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+}
+
 /* Borrowed time: a meter that drains, then a debt that is collected. */
 .loan {
   position: absolute;
