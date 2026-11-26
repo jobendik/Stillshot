@@ -478,10 +478,23 @@ export class CineCamera {
       }
       case 'orbit': {
         const c = shot.focus ?? subject.head;
-        const a = 0.6 + outroT * 0.34;
-        _want.set(c.x + Math.cos(a) * 4.3, this.level.floorY + 1.75, c.z + Math.sin(a) * 4.3);
+        // If the player is standing next to what fell (a kill by hand), frame the
+        // two of them side-on instead of circling through the player's back.
+        const dx = subject.head.x - c.x;
+        const dz = subject.head.z - c.z;
+        const d = Math.hypot(dx, dz);
+        const close = d < 3.5;
+        const cx = close ? c.x + dx * 0.5 : c.x;
+        const cz = close ? c.z + dz * 0.5 : c.z;
+        const radius = close ? 4.0 + d * 0.5 : 4.3;
+        const a = (close ? Math.atan2(dz, dx) + Math.PI / 2 - 0.4 : 0.6) + outroT * (close ? 0.2 : 0.34);
+        _want.set(cx + Math.cos(a) * radius, this.level.floorY + 1.75, cz + Math.sin(a) * radius);
         this.clampToBounds(_want);
-        _look.set(c.x, c.y + 0.1, c.z);
+        _look.set(cx, c.y + 0.1, cz);
+        // The results card sits on the left third: aim a little left of the
+        // subject so the tableau lands in the open part of the frame.
+        _d.set(_look.z - _want.z, 0, -(_look.x - _want.x)).normalize();
+        _look.addScaledVector(_d, radius * 0.3);
         wantFov = 44;
         posRate = cutNow ? 100 : 6;
         lookRate = 8;
