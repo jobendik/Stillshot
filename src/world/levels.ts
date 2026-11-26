@@ -104,7 +104,7 @@ const FIRST_LIGHT: LevelDef = {
   ],
   abilities: { hotswitch: false, borrow: false },
   hints: [
-    { when: 0.02, text: 'move, and time moves. stop, and it holds.' },
+    { when: 0, text: 'move, and time moves. stop, and it holds.' },
     { when: 'armed', text: 'left mouse — fire. every shot spends a little time.' },
     { when: 'bullet-near', text: 'you can see a round coming. step out of its line.' },
     { when: 'empty', text: 'empty. right mouse — throw it at someone.' },
@@ -186,7 +186,7 @@ const GLASS_HOUSE: LevelDef = {
   ],
   abilities: { hotswitch: false, borrow: false },
   hints: [
-    { when: 0.02, text: 'nothing in your hands. [e] or left mouse — take the black orb.' },
+    { when: 0, text: 'nothing in your hands. [e] or left mouse — take the black orb.' },
     { when: 'armed', text: 'right mouse — throw. then catch what they drop.' },
     { when: 'first-kill', text: 'fists work too: one to disarm, three to break.' },
   ],
@@ -260,7 +260,7 @@ const CROSSFIRE: LevelDef = {
   ],
   abilities: { hotswitch: false, borrow: false },
   hints: [
-    { when: 0.02, text: 'red lines show where they are about to fire. do not be there.' },
+    { when: 0, text: 'red lines show where they are about to fire. do not be there.' },
     { when: 'armed', text: 'swing as a round arrives: it splits and returns along your aim.' },
   ],
   par: 14,
@@ -320,7 +320,7 @@ const TRANSPOSITION: LevelDef = {
   ],
   abilities: { hotswitch: true, borrow: false },
   hints: [
-    { when: 0.02, text: 'you cannot reach them. aim at one — [shift] — be them.' },
+    { when: 0, text: 'you cannot reach them. aim at one — [shift] — be them.' },
     { when: 'hotswitch-ready', text: 'transfer ready again.' },
   ],
   par: 12,
@@ -398,7 +398,7 @@ const BORROWED_TIME: LevelDef = {
   ],
   abilities: { hotswitch: true, borrow: true },
   hints: [
-    { when: 0.01, text: '[c] — borrow time. walk through them. get behind a pillar.' },
+    { when: 0, text: '[c] — borrow time. walk through them. get behind a pillar.' },
     { when: 'borrow-ready', text: 'you can borrow again.' },
   ],
   par: 16,

@@ -25,7 +25,7 @@ export const ROTATION_WEIGHT = 0.55;
  */
 export const ROTATION_REFERENCE = 4.0;
 /** Low-pass time constant (s) applied to the instantaneous look speed. */
-export const ROTATION_FILTER_TAU = 0.045;
+export const ROTATION_FILTER_TAU = 0.06;
 /** How fast time speeds up (per second). */
 export const TIME_ATTACK_RATE = 22;
 /** How fast time settles back down (per second). */

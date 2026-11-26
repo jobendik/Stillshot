@@ -66,26 +66,14 @@ export class Director {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
       e.update();
-      if (!e.alive) {
-        this.enemies.splice(i, 1);
-        this.killed++;
-        this.lastKill.copy(e.pos);
-        ctx.bus.emit('enemy:killed', {
-          id: e.id,
-          x: e.pos.x,
-          y: e.pos.y + 1,
-          z: e.pos.z,
-          cause: e.deathCause,
-          remaining: this.remainingTotal(),
-        });
-      }
+      if (!e.alive) this.enemies.splice(i, 1);
     }
     this.separate();
 
     if (this.completed) return;
 
     if (this.queueIndex >= this.waves.length) {
-      if (this.spawnedAny && this.enemies.length === 0) {
+      if (this.spawnedAny && this.aliveCount === 0) {
         this.completed = true;
         ctx.bus.emit('level:complete', {});
       }
@@ -93,7 +81,7 @@ export class Director {
     }
 
     const wave = this.waves[this.queueIndex];
-    const alive = this.enemies.length;
+    const alive = this.aliveCount;
     const ready =
       wave.trigger === 'start' ||
       !this.spawnedAny ||
@@ -125,6 +113,23 @@ export class Director {
       ctx.audio.play('arrive', e.center);
       ctx.bus.emit('enemy:spawned', { id: e.id, x: e.pos.x, y: e.pos.y + 1, z: e.pos.z });
     }
+  }
+
+  /**
+   * A figure has just fallen. Reported at the instant it happens (not when the
+   * list is next tidied) so the kill, its shatter and its sound share a timestamp.
+   */
+  reportKill(e: Enemy): void {
+    this.killed++;
+    this.lastKill.copy(e.pos);
+    this.ctx.bus.emit('enemy:killed', {
+      id: e.id,
+      x: e.pos.x,
+      y: e.pos.y + 1,
+      z: e.pos.z,
+      cause: e.deathCause,
+      remaining: this.remainingTotal(),
+    });
   }
 
   /** Gently push overlapping figures apart so they never merge into one silhouette. */

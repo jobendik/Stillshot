@@ -76,6 +76,10 @@ export class Enemy {
   private repathTimer = 0;
   private aimTimer = 0;
   private blockedTimer = 0;
+  private seekId = -1;
+  private seekBest = Infinity;
+  private seekTimer = 0;
+  private readonly givenUp = new Set<number>();
   private strikeT = -1; // <0 idle; 0..windup winding; then follow-through & recovery
   private struck = false;
   private meleeHits = 0;
@@ -206,6 +210,7 @@ export class Enemy {
     this.ctx.audio.play('shatter', this.center);
     this.releaseWeapon(new Vector3(dir.x * 1.2, 1.4, dir.z * 1.2));
     this.rig.dispose();
+    this.ctx.director.reportKill(this);
   }
 
   /** The player has taken this body. It does not shatter; its weapon is left hanging in the air. */
@@ -216,6 +221,7 @@ export class Enemy {
     const f = forwardFromYaw(this.yaw, _a);
     this.releaseWeapon(new Vector3(f.x * 1.1, 2.6, f.z * 1.1));
     this.rig.dispose();
+    this.ctx.director.reportKill(this);
   }
 
   /** The player is suddenly somewhere else: everyone has to find them again. */
@@ -287,7 +293,9 @@ export class Enemy {
       let target: GroundItem | null = null;
       let bestD = Infinity;
       for (const item of this.ctx.level.items) {
-        if (item.type !== 'weapon' || !item.settled) continue;
+        if (item.type !== 'weapon' || !item.settled || this.givenUp.has(item.id)) continue;
+        // A spent firearm is not worth the walk.
+        if (item.ammo === 0 && item.kind !== 'bat' && item.kind !== 'katana') continue;
         const d = item.pos.distanceToSquared(this.pos);
         if (d < bestD) {
           bestD = d;
@@ -295,17 +303,28 @@ export class Enemy {
         }
       }
       if (target) {
-        if (this.distXZ(this.pos, target.pos) < 0.85) {
+        const reach = this.distXZ(this.pos, target.pos);
+        // Generous reach, so something resting on a plinth can be lifted off it.
+        if (reach < 1.3) {
           if (target.kind) {
             const w = new WeaponInstance(target.kind);
             if (target.ammo !== undefined) w.ammo = target.ammo;
-            // An empty gun is not worth stopping for.
-            if (w.def.category !== 'firearm' || w.ammo > 0) this.equip(w);
+            this.equip(w);
           }
           this.ctx.level.removeItem(target);
           this.ctx.audio.play('pickup', this.center);
           this.path = [];
+          this.seekId = -1;
           return;
+        }
+        // If it cannot actually be reached, stop trying and go for the player instead.
+        if (target.id !== this.seekId || reach < this.seekBest - 0.25) {
+          this.seekId = target.id;
+          this.seekBest = reach;
+          this.seekTimer = 0;
+        } else {
+          this.seekTimer += dt;
+          if (this.seekTimer > 2.2) this.givenUp.add(target.id);
         }
         this.navigateTo(dt, target.pos, 1.25);
         return;

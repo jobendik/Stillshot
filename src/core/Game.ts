@@ -1,5 +1,5 @@
 import { AmbientLight, DirectionalLight, Fog, HemisphereLight, PCFSoftShadowMap, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
-import { GameState } from '@/types';
+import { GameState, type LevelDef } from '@/types';
 import { PALETTE } from '@/config/palette';
 import { getWeaponDef } from '@/config/weapons';
 import { GameContext, makeRng } from './Context';
@@ -82,6 +82,8 @@ export class Game {
   private readonly killsByCause = new Map<KillCause, number>();
   private readonly visuals: BulletVisual[] = [];
   private attempts = 0;
+  private activeDef: LevelDef | null = null;
+  private customDef: LevelDef | null = null;
   /** When true the RAF loop renders but does not advance — tests step manually. */
   manual = false;
   /** Frame statistics for the performance probe. */
@@ -262,6 +264,7 @@ export class Game {
   }
 
   private beginLevel(index: number): void {
+    this.customDef = null;
     this.levelIndex = index;
     this.attempts = 0;
     this.loadLevel(index);
@@ -275,9 +278,10 @@ export class Game {
     });
   }
 
-  private loadLevel(index: number): void {
+  private loadLevel(index: number, custom?: LevelDef): void {
     this.teardownLevel();
-    const def = getLevel(index);
+    const def = custom ?? getLevel(index);
+    this.activeDef = def;
     // Same seed every attempt: a plate is a fixed puzzle, not a dice roll.
     this.ctx.rng = makeRng(0x5eed + index * 977);
     this.fx.reseed(0xc0ffee + index * 131);
@@ -335,7 +339,7 @@ export class Game {
   }
 
   private startPlaying(): void {
-    const def = getLevel(this.levelIndex);
+    const def = this.activeDef ?? getLevel(this.levelIndex);
     this.state = GameState.Playing;
     this.input.releaseAll();
     this.input.enabled = true;
@@ -353,7 +357,7 @@ export class Game {
     this.menu.hideResults();
     this.menu.hideReplay();
     this.menu.hidePause();
-    this.loadLevel(this.levelIndex);
+    this.loadLevel(this.levelIndex, this.customDef ?? undefined);
     this.startPlaying();
   }
 
@@ -376,7 +380,7 @@ export class Game {
     }
     this.stage = new ReplayStage(this.ctx, rec);
     this.state = GameState.Replay;
-    const def = getLevel(this.levelIndex);
+    const def = this.activeDef ?? getLevel(this.levelIndex);
     const marks = this.stage.edit.kills.map((k) => (rec.duration > 0 ? k.tau / rec.duration : 0));
     this.menu.showReplay(`plate ${String(this.levelIndex + 1).padStart(2, '0')} — ${def.name}`, marks, (f) => {
       if (!this.stage) return;
@@ -397,11 +401,12 @@ export class Game {
   private showResults(): void {
     if (this.resultsShown) return;
     this.resultsShown = true;
-    const def = getLevel(this.levelIndex);
+    const def = this.activeDef ?? getLevel(this.levelIndex);
     const rec = this.recording;
     const exposure = rec ? rec.exposure : this.time.worldElapsed;
     const prev = this.store.progress.best[def.id]?.exposure ?? null;
-    const newBest = this.store.recordPlate(def.id, this.levelIndex, exposure);
+    // Test scenarios are not part of the archive.
+    const newBest = this.customDef ? false : this.store.recordPlate(def.id, this.levelIndex, exposure);
     const flourishes: string[] = [];
     for (const [cause, n] of this.killsByCause) {
       const label = FLOURISH[cause];
@@ -745,9 +750,26 @@ export class Game {
   /** Jump straight into a plate, skipping the menus (tests, autoplayer). */
   debugStart(index: number): void {
     this.menu.hide();
+    this.menu.hidePause();
+    this.menu.hideResults();
+    this.menu.hideReplay();
+    this.customDef = null;
     this.levelIndex = index;
     this.attempts = 0;
     this.loadLevel(index);
+    this.startPlaying();
+  }
+
+  /** Start an arbitrary plate definition (tests build small scenarios this way). */
+  debugStartDef(def: LevelDef): void {
+    this.menu.hide();
+    this.menu.hidePause();
+    this.menu.hideResults();
+    this.menu.hideReplay();
+    this.customDef = def;
+    this.levelIndex = 0;
+    this.attempts = 3; // no tutorial hints
+    this.loadLevel(0, def);
     this.startPlaying();
   }
 

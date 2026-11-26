@@ -89,6 +89,8 @@ export class BulletRenderer {
         if (v.hostile) streaks.line(_a, _b, r * 2.6, [2.6, 0.12, 0.1, 0.95], [1.6, 0.05, 0.05, 0]);
         else streaks.line(_a, _b, r * 2.2, [0.03, 0.03, 0.04, 0.7], [0.03, 0.03, 0.04, 0]);
       }
+      // Seen end-on a dart is almost nothing, so hostile rounds carry a small red point.
+      if (v.hostile) streaks.glow(_p, 0.085, [2.2, 0.1, 0.1, 0.55]);
       // Threat line.
       if (v.hostile && v.threat > 0.3 && threatAlpha > 0.01) {
         _a.copy(_p).addScaledVector(_d, half);

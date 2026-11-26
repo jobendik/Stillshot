@@ -1,14 +1,17 @@
 {
   "name": "stillshot",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
-  "description": "StillShot — a browser recreation of the SUPERHOT temporal-shooter mechanic. Time moves only when you move.",
+  "description": "STILLSHOT \u2014 a browser temporal-action game. Time is not passed; it is spent.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "npm run build && node scripts/test.mjs",
+    "test:only": "node scripts/test.mjs",
+    "capture": "node scripts/capture.mjs"
   },
   "devDependencies": {
     "@types/three": "^0.169.0",

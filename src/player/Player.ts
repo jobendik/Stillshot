@@ -319,9 +319,14 @@ export class Player {
       ctx.audio.play('dryfire');
       ctx.bus.emit('weapon:empty', {});
     }
-    // A click that lands a hair before the weapon is ready still fires.
-    if (pressed) this.fireBuffer = 0.14;
-    else this.fireBuffer -= ctx.time.unscaledDt;
+    // A click always commits. If the weapon is still cycling, the remaining
+    // cycle time is spent (the world lurches forward) and then it fires.
+    if (pressed && !weapon.empty) {
+      this.fireBuffer = weapon.cooldown + 0.2;
+      if (!weapon.readyToFire && !weapon.bursting) ctx.time.spendAction(weapon.cooldown + 0.01);
+    } else {
+      this.fireBuffer -= ctx.time.subjectiveDt;
+    }
     const trigger = this.fireBuffer > 0 && weapon.readyToFire;
     if (trigger) this.fireBuffer = 0;
 

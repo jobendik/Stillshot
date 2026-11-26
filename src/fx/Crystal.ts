@@ -139,7 +139,7 @@ const FRAG = /* glsl */ `
     vec3 V = normalize(cameraPosition - vWorld);
 
     // Materialise / dissolve: a cellular front sweeps through the body.
-    float cell = vnoise(vObj * 9.0 + vSeed * 7.0);
+    float cell = vnoise(vWorld * 5.5 + vSeed * 7.0);
     float edge = 0.0;
     #ifndef SHARDS
       if (uDevelop < 0.999) {

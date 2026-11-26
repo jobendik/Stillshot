@@ -139,7 +139,7 @@ const COMPOSITE_FRAG = /* glsl */ `
     if (uNegative > 0.001) {
       float iris = smoothstep(uNegative * 1.25, uNegative * 1.25 - 0.14, length(centred * vec2(aspect, 1.0)) * 0.95);
       vec3 inv = vec3(1.0) - col;
-      inv = pow(max(inv, 0.0), vec3(1.35)) * vec3(0.86, 0.93, 1.06) + vec3(0.012, 0.016, 0.03);
+      inv = pow(max(inv, 0.0), vec3(2.1)) * vec3(0.84, 0.93, 1.08) * 1.25 + vec3(0.01, 0.014, 0.028);
       vec3 neg = mix(inv, col * 1.08, red);
       vec3 soft = mix(vec3(luma) * vec3(0.55, 0.68, 0.9), col, red); // reduced-flash variant
       col = mix(col, mix(neg, soft, uNegativeSoft), iris);
@@ -156,8 +156,6 @@ const COMPOSITE_FRAG = /* glsl */ `
 
     // Vignette + grain.
     col *= 1.0 - r2 * 0.34 * uLens;
-    float g = hash(gl_FragCoord.xy + fract(uTime) * 311.7) - 0.5;
-    col += g * (0.012 + 0.012 * (1.0 - uFlow)) * uLens;
 
     // Death: the exposure fails.
     if (uDeath > 0.001) {
@@ -170,6 +168,9 @@ const COMPOSITE_FRAG = /* glsl */ `
     // sRGB encode.
     col = clamp(col, 0.0, 1.0);
     col = mix(col * 12.92, 1.055 * pow(col, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, col));
+    // Grain is added after encoding so it is equally faint on ink and on paper.
+    float g = hash(gl_FragCoord.xy + fract(uTime) * 311.7) - 0.5;
+    col += g * (0.018 + 0.014 * (1.0 - uFlow)) * uLens;
     gl_FragColor = vec4(col, 1.0);
   }
 `;
