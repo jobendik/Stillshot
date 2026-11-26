@@ -2,6 +2,7 @@ import type { PerspectiveCamera, Scene } from 'three';
 import type { TimeController } from './Time';
 import type { InputManager } from './Input';
 import type { EventBus } from './events';
+import type { SettingsStore } from './Settings';
 import type { Level } from '@/world/Level';
 import type { ProjectileSystem } from '@/combat/Projectile';
 import type { ThrownObjectSystem } from '@/combat/Throwable';
@@ -9,13 +10,12 @@ import type { Player } from '@/player/Player';
 import type { Director } from '@/ai/Director';
 import type { FXSystem } from '@/fx/FX';
 import type { AudioEngine } from '@/audio/Audio';
-import type { ReplayRecorder } from '@/replay/Replay';
+import type { ReplayRecorder } from '@/replay/Recorder';
 
 /**
- * A bag of shared services handed to every gameplay entity. Using a single
- * mutable context (assigned once by Game during setup) keeps entities free of
- * direct references to the orchestrator and avoids runtime import cycles —
- * every field here is imported as a *type only*.
+ * A bag of shared services handed to every gameplay entity. Assigned once by
+ * Game during setup; every field is imported as a type only, so there are no
+ * runtime import cycles.
  */
 export class GameContext {
   scene!: Scene;
@@ -23,6 +23,7 @@ export class GameContext {
   time!: TimeController;
   input!: InputManager;
   bus!: EventBus;
+  settings!: SettingsStore;
   level!: Level;
   projectiles!: ProjectileSystem;
   thrown!: ThrownObjectSystem;
@@ -30,12 +31,12 @@ export class GameContext {
   director!: Director;
   fx!: FXSystem;
   audio!: AudioEngine;
-  replay!: ReplayRecorder;
-  /** Seeded RNG in [0,1). */
+  recorder!: ReplayRecorder;
+  /** Seeded gameplay RNG in [0,1) — reseeded per attempt so runs are reproducible. */
   rng!: () => number;
 }
 
-/** Mulberry32 — small, fast, seedable PRNG for reproducible spawns. */
+/** Mulberry32 — small, fast, seedable PRNG. */
 export function makeRng(seed: number): () => number {
   let a = seed >>> 0;
   return function () {

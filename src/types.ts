@@ -1,5 +1,3 @@
-import type { Vector3 } from 'three';
-
 // ---------------------------------------------------------------------------
 // Top-level game state machine
 // ---------------------------------------------------------------------------
@@ -11,8 +9,8 @@ export enum GameState {
   Playing = 'playing',
   Paused = 'paused',
   Dead = 'dead',
-  Replay = 'replay',
   LevelComplete = 'level-complete',
+  Replay = 'replay',
   Win = 'win',
 }
 
@@ -22,14 +20,7 @@ export type Faction = 'player' | 'enemy';
 // Weapons
 // ---------------------------------------------------------------------------
 
-export type WeaponKind =
-  | 'fist'
-  | 'pistol'
-  | 'rifle'
-  | 'shotgun'
-  | 'nailgun'
-  | 'bat'
-  | 'katana';
+export type WeaponKind = 'fist' | 'pistol' | 'rifle' | 'shotgun' | 'nailgun' | 'bat' | 'katana';
 
 export type WeaponCategory = 'unarmed' | 'firearm' | 'melee';
 
@@ -46,132 +37,145 @@ export interface WeaponDef {
   kind: WeaponKind;
   displayName: string;
   category: WeaponCategory;
-  /** Magazine capacity. Firearms have no reload — depleted weapons are dropped. */
+  /** Magazine capacity. No reload — a spent weapon is something to throw. */
   ammo: number;
   fireMode: FireMode;
-  /** Rounds fired per trigger pull for burst weapons. */
   burstCount: number;
-  /** Delay (real seconds) between rounds within a burst. */
+  /** Delay between rounds within a burst (seconds on the owner's clock). */
   burstInterval: number;
-  /** Pellets per shell for spread weapons. */
   pelletCount: number;
   /** Half-angle spread cone in radians. */
   spread: number;
-  /** Minimum real-time seconds between trigger pulls. */
+  /** Seconds between trigger pulls, on the owner's clock (see WeaponInstance). */
   cooldown: number;
-  /** Projectile muzzle speed in m/s (world time). */
+  /** Muzzle speed in m/s of world time. */
   projectileSpeed: number;
-  /** Pierces enemy meshes for collateral kills. */
+  /** Pierces bodies for collateral kills. */
   piercing: boolean;
   glass: GlassBehavior;
-  /** Can be deflected/sliced by an opposing katana or bat. */
+  /** Can be split / returned by a blade. */
   deflectable: boolean;
-  // Melee / unarmed
   meleeHitsToKill: number;
-  durability: number; // improvised melee weapons shatter after this many impacts
-  unbreakable: boolean; // katana
-  canSliceBullets: boolean; // katana
-  canDeflectBullets: boolean; // bat / katana
-  // Handling
+  durability: number;
+  unbreakable: boolean;
+  canSliceBullets: boolean;
+  canDeflectBullets: boolean;
   throwable: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Lightweight transform snapshot used by the replay recorder
-// ---------------------------------------------------------------------------
-
-export interface TransformSnapshot {
-  px: number;
-  py: number;
-  pz: number;
-  /** Quaternion */
-  qx: number;
-  qy: number;
-  qz: number;
-  qw: number;
-}
-
-export interface ReplayFrame {
-  t: number; // accumulated world time at capture
-  camera: TransformSnapshot;
-  enemies: Array<TransformSnapshot & { alive: boolean }>;
-  projectiles: Array<{ px: number; py: number; pz: number }>;
-}
+/** Visual class of a projectile (drives the bullet renderer & the replay). */
+export type ProjectileLook = 'bullet' | 'pellet' | 'nail' | 'half';
 
 // ---------------------------------------------------------------------------
-// Spawn / level data
+// Enemies
 // ---------------------------------------------------------------------------
+
+/**
+ * grunt    — the baseline red: relentless, predictable.
+ * constant — refuses to wait for you: keeps moving while you stand still.
+ * bulwark  — carries a slab that returns bullets fired at its front.
+ */
+export type EnemyKind = 'grunt' | 'constant' | 'bulwark';
+
+// ---------------------------------------------------------------------------
+// Level data
+// ---------------------------------------------------------------------------
+
+export type Vec3 = [number, number, number];
 
 export interface BoxColliderDef {
-  /** Center position. */
-  pos: [number, number, number];
-  /** Full size (width, height, depth). */
-  size: [number, number, number];
-  /** 'wall' | 'cover' — both block movement & bullets. */
-  kind?: 'wall' | 'cover' | 'pillar';
+  pos: Vec3;
+  size: Vec3;
+  kind?: 'wall' | 'cover' | 'pillar' | 'plinth';
+}
+
+/** Purely visual architecture — never collides, never blocks a bullet. */
+export interface DecorDef {
+  pos: Vec3;
+  size: Vec3;
+  tone?: 'light' | 'grey' | 'dark' | 'ink' | 'red';
 }
 
 export interface GlassPaneDef {
-  pos: [number, number, number];
-  size: [number, number, number]; // thin on one axis
+  pos: Vec3;
+  size: Vec3; // thin on one horizontal axis
 }
 
 export interface WeaponSpawnDef {
   kind: WeaponKind;
-  pos: [number, number, number];
+  pos: Vec3;
 }
 
 export interface ThrowableSpawnDef {
-  pos: [number, number, number];
-  /** Visual scale of the black throwable. */
+  pos: Vec3;
   radius?: number;
 }
 
 export interface EnemySpawnDef {
-  pos: [number, number, number];
-  /** Starting weapon, or undefined = unarmed (will seek a weapon). */
+  pos: Vec3;
+  kind?: EnemyKind;
+  /** Starting weapon; omitted = unarmed (will go looking for one). */
   weapon?: WeaponKind;
-  /** Facing yaw in radians. */
   yaw?: number;
 }
 
 export interface WaveDef {
-  /** Enemies in this wave. */
   enemies: EnemySpawnDef[];
   /**
-   * Trigger to release the wave: 'start' (immediately), or 'cleared'
-   * (when the previous wave's enemies are all dead).
+   * 'start'   — released when the plate begins.
+   * 'cleared' — released once every earlier enemy is gone.
+   * 'thin'    — released once `remaining` or fewer earlier enemies are alive.
    */
-  trigger: 'start' | 'cleared';
-  /** Optional delay (world seconds) after the trigger condition. */
+  trigger: 'start' | 'cleared' | 'thin';
+  remaining?: number;
+  /** Delay in world seconds after the trigger condition is met. */
   delay?: number;
+}
+
+/** A region where time behaves differently. */
+export interface FieldDef {
+  pos: Vec3;
+  radius: number;
+  kind: 'still' | 'rush';
+}
+
+/** A round already in the air when the plate begins. */
+export interface VolleyDef {
+  pos: Vec3;
+  dir: Vec3;
+  weapon: WeaponKind;
+}
+
+export interface HintDef {
+  /** World seconds after the plate starts, or the name of a one-shot trigger. */
+  when: number | 'armed' | 'empty' | 'first-kill' | 'bullet-near' | 'borrow-ready' | 'hotswitch-ready';
+  text: string;
 }
 
 export interface LevelDef {
   id: string;
+  /** Short title shown on the plate card. */
   name: string;
-  /** Faux-DOS briefing text shown before the level. */
+  /** The archivist's note shown before the plate. */
   briefing: string;
-  /** Arena floor extents (half-sizes from origin) used for the nav grid + bounds. */
+  /** One line shown after the plate is developed. */
+  afterword?: string;
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
   floorY: number;
-  spawn: { pos: [number, number, number]; yaw: number };
+  wallHeight?: number;
+  spawn: { pos: Vec3; yaw: number };
   colliders: BoxColliderDef[];
+  decor?: DecorDef[];
   glass: GlassPaneDef[];
   weapons: WeaponSpawnDef[];
   throwables: ThrowableSpawnDef[];
+  fields?: FieldDef[];
+  volley?: VolleyDef[];
   waves: WaveDef[];
-}
-
-// ---------------------------------------------------------------------------
-// Shared spatial helpers
-// ---------------------------------------------------------------------------
-
-export interface RayHit {
-  point: Vector3;
-  distance: number;
-  /** What was struck. */
-  kind: 'wall' | 'glass' | 'none';
-  /** Reference to the glass pane index if kind === 'glass'. */
-  glassIndex?: number;
+  abilities: { hotswitch: boolean; borrow: boolean };
+  hints?: HintDef[];
+  /** Target exposure (world seconds) for a clean run. */
+  par: number;
+  /** Direction TO the key light. */
+  sun?: Vec3;
 }

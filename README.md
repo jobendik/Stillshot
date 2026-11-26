@@ -1,30 +1,49 @@
 # STILLSHOT
 
-> *time moves only when you move.*
+> *time is not passed. it is spent.*
 
-A complete, browser-native homage to the **SUPERHOT** temporal-shooter mechanic, built from the architectural blueprint in [`blueprint.md`](blueprint.md). Written in **TypeScript**, rendered with **three.js**, and served by a professional **Vite** setup. No game-engine, no art assets — every model, sound, and shader is procedural.
+A browser-native temporal action game. The world only moves when you do — every step, every glance, every shot releases a little time, and time is the only thing you score.
 
-The core mandate is faithfully reproduced: the global time scale is mapped to the magnitude of your input. Stand perfectly still and the world decelerates to ~1/200th speed (it never fully freezes — bullets keep inching toward you). Move or look and time surges back to real-time.
+TypeScript · three.js · Vite. No game engine and no art, audio or font files: every model, shader, animation and sound is generated in code.
+
+![A wall of rounds, seen from inside borrowed time](docs/after/06_negative.jpg)
+
+| | |
+| --- | --- |
+| ![Rounds in the air with their trajectories](docs/after/10_rounds_in_the_air.jpg) | ![A figure coming apart, suspended](docs/after/11_fracture_suspended.jpg) |
+| ![The replay: pursuit shot](docs/after/15_replay_pursuit.jpg) | ![The replay: witness shot](docs/after/16_replay_witness.jpg) |
+
+More in [`docs/after/`](docs/after) (regenerate with `npm run capture`); the original build is in [`docs/before/`](docs/before).
 
 ---
 
-## Quick start
+## Run it
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
 ```
 
-Other scripts:
+```bash
+npm run dev
+```
 
-| Script | Purpose |
+Then open <http://localhost:5173>. Needs a desktop browser with WebGL2, a keyboard and a mouse.
+
+| Script | What it does |
 | --- | --- |
-| `npm run dev` | Vite dev server with HMR |
-| `npm run build` | Type-check (`tsc --noEmit`) + production bundle to `dist/` |
-| `npm run preview` | Serve the production build |
-| `npm run typecheck` | Type-check only |
+| `npm run dev` | Dev server with hot reload |
+| `npm run build` | Type-check, then production bundle in `dist/` |
+| `npm run preview` | Serve the production bundle |
+| `npm test` | Build, then run the regression suite (87 assertions, headless Chromium) |
+| `npm run capture` | Regenerate the screenshots in `docs/after/` |
 
-A headless smoke test (boots the game, drives the menu, plays a frame, asserts no runtime errors) lives at [`scripts/smoke.mjs`](scripts/smoke.mjs).
+The test and capture scripts use Playwright. If it has no browser yet:
+
+```bash
+npx playwright install chromium
+```
+
+(or point `CHROME_EXE` at any Chrome/Chromium binary).
 
 ---
 
@@ -32,88 +51,98 @@ A headless smoke test (boots the game, drives the menu, plays a frame, asserts n
 
 | Input | Action |
 | --- | --- |
-| **W A S D** | Move (advances time) |
-| **Mouse** | Look (advances time, weighted lower than movement) |
-| **Space** | Jump — hold while airborne for aerial time-dilation |
-| **LMB** | Fire / punch / swing |
-| **Q** (or RMB) | Throw the held item (magnetized toward the crosshair) |
-| **F** | Melee |
-| **E** | Pick up the nearest weapon / object |
-| **Shift** | **Hotswitch** — project into a targeted enemy's body |
-| **R** | Retry (after death) |
+| **W A S D** | Move — spends time |
+| **Mouse** | Look — spends a little |
+| **Left mouse** | Fire · strike · with empty hands, take what is under the crosshair |
+| **Right mouse** / **Q** | Throw what you are holding |
+| **E** | Take or catch |
+| **F** | Strike with whatever is in hand |
+| **Space** | Jump (you can mount waist-high cover). Hold while airborne to hang in slow time (the time you held back is collected when you land) |
+| **Shift** | Transfer into the figure under the crosshair |
+| **C** (or **V**, middle mouse) | Borrow time |
+| **R** | Expose the plate again |
+| **Esc** | Pause |
+
+During the replay: **Space** hold · **← →** scrub · **1 2 3** director / first person / pursuit · **Enter** skip.
+
+Settings (title screen or pause): sensitivity, invert Y, field of view, three volume sliders, lens-effect strength, bloom, trajectory lines, render scale, **reduced motion**, **reduced flash**.
 
 ---
 
-## What's implemented (mapped to the blueprint)
+## The rules
 
-**Temporal mechanics** — `src/core/Time.ts`
-- `magnitude = √(translation² + (W·rotation)²)`, smoothstepped, with asymmetric attack/release smoothing (snappy speed-up, eased slow-down).
-- Idle floor `MIN_TIME_SCALE = 0.005`; rotation weighted below translation (`ROTATION_WEIGHT`).
-- Jump dilation caps the scale at `0.25` while airborne with jump held.
-- Player kinematics run on **unscaled** time; the entire world runs on **scaled** time.
+1. **Time is spent.** The world's rate follows how much you are doing: `sqrt(move² + (0.55 · lookSpeed/4 rad·s⁻¹)²)`, shaped and smoothed. Stand still and it runs at 1/200.
+2. **Every action costs time.** A shot, a swing, a throw, a grab each release a fixed slice. A gun only cycles on time you have spent — you cannot stand still and empty a magazine for free.
+3. **One hit.** For you and for them.
+4. **Rounds are objects.** They fly, they can be watched, side-stepped, blocked with anything thrown, split, or returned. A round that misses you keeps going and will kill whoever it finds.
+5. **Nothing reloads.** A spent weapon is something to throw. Anything thrown knocks a weapon out of a hand; a weapon in the air belongs to whoever takes it.
+6. **A blade splits.** Swing a katana into a round and it becomes two of yours, leaving along your aim. A bat sends it back whole — three times.
+7. **Transfer** (Shift) puts you in another body. The one you leave breaks; what your new body was carrying is left hanging in front of you. Needs a line of sight.
+8. **Borrowed time** (C) stops the world *completely* for up to 1.6 s while you keep moving. Then the world collects: for exactly as long as you held it, time runs at a full second per second whether you move or not. Rounds you fire during the loan hang at the muzzle and all leave together.
 
-**Combat & ballistics** — `src/combat/`, `src/config/weapons.ts`
-- *Physical* projectiles (never hitscan) governed by world time — they crawl and can be tracked, dodged, or sliced. Swept collision avoids tunneling at any time scale.
-- Full weapon taxonomy: **Pistol** (5, semi, deflectable), **Assault Rifle** (12, uninterruptible 4-round burst, penetrates after the first glass break), **Shotgun** (2 shells × 9 pellets, extreme spread, near-undeflectable), **Fishgun/Nailgun** (3, pierces glass *and* enemies for collateral kills).
-- One-hit-kill for player and enemies. No reload — depleted weapons are kept to throw.
-- **Katana** slices incoming bullets (oversized trigger volume → two diverging cosmetic halves). **Bat** deflects bullets but degrades and shatters after 3 impacts. Fists need 3 combo strikes; thrown objects stagger + disarm.
-- Throwables auto-magnetize toward enemies via a targeting cylinder; impacts disarm armed enemies (their weapon pops up as a grabbable pickup).
-- FOV-aware player hitbox: a bullet you're actively tracking is far easier to evade than one you turn your back on.
+Things you can read without a HUD: red lines show where a figure is about to fire; dashed lines show where a slow round is going (the dashes crawl at the speed of time); rings on the floor spread from your feet at 2 m per world-second; the picture inverts to a negative while time is borrowed.
 
-**Hotswitch** — `src/player/Player.ts`
-- Center-screen target acquisition, instant teleport into the body, old body shatters as crystal, the host immediately drops/shatters its weapon, hard cooldown before reuse.
+Your score for a plate is its **exposure** — the world-time it cost you. Less is better. Each plate has a par.
 
-**AI** — `src/ai/`
-- Deterministic three-state behavior tree: **Acquire weapon → Engage (LOS + predictive lead) → Pursue (shortest path)**. No cover, no retreat, no coordination — relentless and predictable.
-- Grid-based A* navigation (string-pulled) as a NavMesh stand-in.
-- Wave director with the signature **spawn-behind** placement; arena completes when the last red falls, freezing all projectiles mid-air.
+### Figures
 
-**Rendering** — `src/fx/`
-- Strict tri-color isolation: matte white/grey environment, absolute-black interactives, glossy emissive-red enemies.
-- Crystalline **Voronoi-style shatter** on death (shards live in world time, so kills landed while frozen hang in the air); breakable glass; muzzle flashes; sparks.
-- Diegetic **CRT post-process** (scanlines, curvature, chromatic aberration, vignette, flicker) as a single dependency-free full-screen pass.
+| | |
+| --- | --- |
+| **Red** | Materialises (harmless for 0.75 s), fetches a weapon if it has none, stops and aims when it can see you, walks at you when it cannot. Will not shoot through a friend. In reach, a visible wind-up, then a committed swing. |
+| **Constant** (amber, ringed) | Keeps its own time: never drops below 28 % speed however still you stand. You can hear it counting. Borrowed time stops it too. |
+| **Bulwark** (white slab) | Rounds that hit the slab come back. Slow to turn. Anything thrown knocks the slab aside; a spike goes through it. |
 
-**Replay** — `src/replay/Replay.ts`
-- Records against world time so dead time is compressed out, then plays the run back at hard-locked real-time 1.0 with the flashing **SUPER / HOT** typography and a synthesized title voice.
+### The plates
 
-**Audio** — `src/audio/Audio.ts`
-- Fully procedural Web Audio. Every effect's pitch and the ambient server-fan/CRT drone are tethered to the time scale — deep and muffled when frozen, bright and snappy at speed ("auditory whiplash").
-
-**Meta-narrative** — `src/ui/Menu.ts`
-- Faux-DOS boot spew, cracked-executable framing, a blinking shell, and mission briefings ("insert consciousness").
-
-### Documented but intentionally out of scope
-The blueprint also surveys **Superhot VR** (6DoF, Mindwave) and **Mind Control Delete** (roguelite Cores/Hacks, armored/mushroom/specialist archetypes). Those are platform/expansion rewrites; this build targets a faithful **keyboard-and-mouse core campaign** experience. The architecture (ScriptableObject-style weapon defs in `config/`, modular systems) is structured to make those extensions straightforward.
+| # | Name | Idea |
+| --- | --- | --- |
+| 01 | First Light | Time moves when you move; rounds are objects |
+| 02 | Glass House | You start with nothing: throw, disarm, catch |
+| 03 | Crossfire | They are on both sides — let them shoot each other. The blade |
+| 04 | Transposition | Three sealed rooms. The only door is another body |
+| 05 | Borrowed Time | Opens on a wall of rounds with no gap |
+| 06 | Metronome | Constants; a field where time pools and one where it will not wait |
+| 07 | Slab | What you fire at the slab comes back |
+| 08 | The Long Exposure | All of it |
 
 ---
 
-## Architecture
+## What is under it
 
 ```
 src/
-├─ main.ts                 entry point
-├─ core/
-│  ├─ Game.ts              orchestrator + state machine + RAF loop
-│  ├─ Time.ts              the temporal core (timescale ↔ input magnitude)
-│  ├─ Input.ts             keyboard / pointer-lock mouse
-│  ├─ Context.ts           shared service bag (avoids import cycles)
-│  ├─ events.ts            typed event bus
-│  └─ math.ts              vector/yaw helpers
-├─ config/                 constants, palette, weapon taxonomy (data-driven)
-├─ world/                  Level geometry, collision math, level definitions
-├─ player/                 Player.ts (kinematics, weapons, melee, hotswitch)
-├─ combat/                 Projectile, Weapon, Throwable systems
-├─ ai/                     Enemy behavior tree, A* Navigation, wave Director
-├─ fx/                     Materials, Models, FX (shatter), PostFX (CRT)
-├─ audio/                  procedural Web Audio engine
-├─ replay/                 record + SUPER HOT playback
-└─ ui/                     HUD, faux-DOS Menu, styles.css
+├─ core/      Game (state machine + loop), Time (the three clocks), Input, Settings, events
+├─ config/    constants, palette, weapon table
+├─ world/     Level (geometry, glass, pickups, time fields), Collision, the eight plates
+├─ player/    Player (movement, actions, blade, transfer), Viewmodel
+├─ combat/    Projectile, Throwable, Weapon
+├─ ai/        Enemy (behaviour + pose), Director (waves, arrivals), Navigation (grid A*)
+├─ fx/        Poly (convex polyhedra, Voronoi), Rig (articulated figures), Crystal + Shards
+│             (GPU fracture), Streaks, Bullets, Env (surfaces, glass, fields), PostFX (lens), FX
+├─ audio/     procedural Web Audio engine
+├─ replay/    Recorder, Stage (playback), Cine (automatic cinematographer)
+└─ ui/        HUD, Menu, styles
+scripts/      harness, autoplayer, regression suite, perf probe, capture
+docs/         NOTES.md (decisions, measurements, limits), before/ and after/ screenshots,
+              blueprint.md (the original design brief, kept for history)
 ```
 
-**The one rule that defines everything:** the player controller integrates on `time.unscaledDt` (instant, crisp); every other system — projectiles, enemies, shatter shards, the audio pitch — integrates on `time.scaledDt`. The act of moving is what spends time.
+**Three clocks.** *Real* time drives the player's body. *Subjective* time is real time weighted by what the player is doing — it drives the player's weapon cooldowns. *World* time drives everything else and is normally the same as subjective time; borrowed time is the one place they are deliberately pulled apart. See `src/core/Time.ts`.
+
+**Fracture.** Every body part is a convex polyhedron. The mesh you see and the shards it breaks into are generated from the same polyhedron by Voronoi decomposition, so a figure shatters into exactly the pieces of what was standing there. Each shard's flight (ballistic arc, one bounce, spin, a release delay that makes the crack travel outward from the hit) is a closed-form function of world time evaluated in the vertex shader — one draw call per burst, nothing integrated on the CPU. See `src/fx/Poly.ts`, `Shards.ts`, `Crystal.ts`.
+
+**Replay.** A run is recorded as dense pose snapshots plus an event log (every effect with its seed, every sound, every kill and its cause) on a single timeline that combines world time with a compressed share of borrowed time. Playback re-poses the real rigs and feeds the recorded shatter specs back to the real shard system; because shard motion is a function of the clock, the replay shows the identical fracture and can be paused, scrubbed and restarted. An automatic cinematographer cuts between six kinds of shot and ramps speed around each kill. It never moves or invents anything — only where the camera stands. See `src/replay/`.
+
+**Tests.** `window.__stillshot` exposes the game; `game.manual = true` hands the clock to the caller and `game.debugStep(dt, n)` advances exact frames, so tests choose the frame rate. The suite checks, among other things: look cost at 30/60/120/144/240 fps, no tunnelling at 20 fps, friendly fire, splitting, ricochets, disarm-and-catch, transfer line-of-sight, melee whiffs, Constants and fields, recording/playback fidelity, all eight plates completable by an autoplayer, determinism, no GPU-resource growth across retries, pause/resume and death/restart.
 
 ---
 
-## License
+## Honest limits
 
-Fan project / homage for educational purposes. SUPERHOT is a trademark of the SUPERHOT Team.
+- Tested by automation in headless Chromium only. **No human has playtested this build**, nobody has listened to the audio (its levels were measured, not heard), and it has not been run on a physical GPU, in Firefox or in Safari. See `docs/NOTES.md` for exactly what was and was not verified.
+- Keyboard and mouse only. No gamepad, touch or key remapping.
+- The autoplayer proves plates *can* be finished; it does not prove they are well paced for a person. Pars are estimates.
+
+## Attribution
+
+STILLSHOT is a non-commercial fan project. It began as a study of the *time moves when you move* idea introduced by **SUPERHOT** (SUPERHOT Team), and still owes that game its central rule, one-hit kills, and the throw–disarm–catch loop. It uses none of SUPERHOT's assets, text, audio or branding. SUPERHOT is a trademark of the SUPERHOT Team. This is an educational project: nothing here has been cleared for commercial distribution, and the repository does not currently contain a licence file.

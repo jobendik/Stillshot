@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath, URL } from 'node:url';
 
-// Professional Vite configuration for the StillShot temporal shooter.
+// Vite configuration for STILLSHOT.
 // - Path alias `@` -> `src`
 // - three.js split into its own vendor chunk for cleaner caching
 export default defineConfig({
@@ -14,7 +14,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    open: true,
+    open: false,
   },
   build: {
     target: 'es2021',

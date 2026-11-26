@@ -1,7 +1,9 @@
 /**
- * Keyboard + pointer-lock mouse input. Exposes high-level actions, edge-detected
- * "pressed this frame" queries, and the accumulated mouse delta that both the
- * camera and the time controller consume each frame.
+ * Keyboard + pointer-lock mouse input. Exposes held actions, edge-detected
+ * "pressed this frame" queries, and the mouse delta accumulated since the last
+ * frame. Everything can also be driven programmatically (`setAction`, `tap`,
+ * `addLook`) so the test harness and the autoplayer use the same path a human
+ * does.
  */
 
 export type Action =
@@ -15,6 +17,7 @@ export type Action =
   | 'melee'
   | 'use'
   | 'hotswitch'
+  | 'borrow'
   | 'restart';
 
 const KEY_MAP: Record<string, Action> = {
@@ -33,23 +36,32 @@ const KEY_MAP: Record<string, Action> = {
   KeyR: 'restart',
   ShiftLeft: 'hotswitch',
   ShiftRight: 'hotswitch',
+  KeyC: 'borrow',
+  KeyV: 'borrow',
+};
+
+const MOUSE_MAP: Record<number, Action> = {
+  0: 'fire',
+  1: 'borrow',
+  2: 'altFire',
 };
 
 export class InputManager {
   private down = new Set<Action>();
   private pressedThisFrame = new Set<Action>();
-  private mouseDownThisFrame = new Set<number>();
 
+  /** Mouse delta in pixels accumulated since the last frame. */
   mouseDX = 0;
   mouseDY = 0;
-  /** Summed absolute pixels this frame — fed to the time controller. */
-  mousePixels = 0;
 
   pointerLocked = false;
+  /** When false, gameplay input is ignored (menus, death, replay). */
   enabled = false;
 
-  /** Optional hook fired when the user clicks while not pointer-locked. */
+  /** Fired when the user clicks the canvas while it is not pointer-locked. */
   onRequestLock: (() => void) | null = null;
+  /** Fired for any key press (used by menus / replay controls). */
+  onAnyKey: ((code: string) => void) | null = null;
 
   private readonly canvas: HTMLElement;
 
@@ -57,79 +69,105 @@ export class InputManager {
     this.canvas = canvas;
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
+    window.addEventListener('blur', this.handleBlur);
+    document.addEventListener('visibilitychange', this.handleBlur);
     document.addEventListener('mousemove', this.handleMouseMove);
     document.addEventListener('mousedown', this.handleMouseDown);
     document.addEventListener('mouseup', this.handleMouseUp);
     document.addEventListener('pointerlockchange', this.handlePointerLockChange);
-    // Suppress the context menu so right-click can be used as throw if desired.
-    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    document.addEventListener('contextmenu', this.handleContextMenu);
   }
 
   requestPointerLock(): void {
-    this.canvas.requestPointerLock?.();
+    try {
+      const p = this.canvas.requestPointerLock?.() as unknown as Promise<void> | undefined;
+      // Browsers reject a re-lock attempted too soon after Esc; the game stays
+      // paused and the next click simply tries again.
+      if (p && typeof p.catch === 'function') p.catch(() => undefined);
+    } catch {
+      /* unsupported */
+    }
   }
 
   exitPointerLock(): void {
-    document.exitPointerLock?.();
+    if (document.pointerLockElement) document.exitPointerLock?.();
   }
 
   private handlePointerLockChange = () => {
     this.pointerLocked = document.pointerLockElement === this.canvas;
+    if (!this.pointerLocked) this.releaseAll();
+  };
+
+  private handleBlur = () => {
+    // Never leave a key "stuck" when focus goes elsewhere.
+    this.releaseAll();
+  };
+
+  private handleContextMenu = (e: Event) => {
+    if (this.pointerLocked || e.target === this.canvas) e.preventDefault();
   };
 
   private handleKeyDown = (e: KeyboardEvent) => {
+    if (!e.repeat) this.onAnyKey?.(e.code);
     const action = KEY_MAP[e.code];
     if (!action) return;
-    if (e.code === 'Space') e.preventDefault();
+    if (this.enabled) {
+      if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+    }
+    if (e.repeat) return;
     if (!this.down.has(action)) this.pressedThisFrame.add(action);
     this.down.add(action);
   };
 
   private handleKeyUp = (e: KeyboardEvent) => {
     const action = KEY_MAP[e.code];
-    if (!action) return;
-    this.down.delete(action);
+    if (action) this.down.delete(action);
   };
 
   private handleMouseMove = (e: MouseEvent) => {
     if (!this.pointerLocked || !this.enabled) return;
+    // Some browsers report a huge bogus delta on the first event after a lock
+    // or a focus change; a single frame can never legitimately exceed this.
+    if (Math.abs(e.movementX) > 2000 || Math.abs(e.movementY) > 2000) return;
     this.mouseDX += e.movementX;
     this.mouseDY += e.movementY;
-    this.mousePixels += Math.abs(e.movementX) + Math.abs(e.movementY);
   };
 
   private handleMouseDown = (e: MouseEvent) => {
     if (!this.pointerLocked) {
-      if (this.enabled) this.onRequestLock?.();
+      if (this.enabled && e.target === this.canvas) this.onRequestLock?.();
       return;
     }
-    this.mouseDownThisFrame.add(e.button);
-    if (e.button === 0) this.pressedThisFrame.add('fire');
-    if (e.button === 2) this.pressedThisFrame.add('altFire');
-    this.down.add(e.button === 0 ? 'fire' : e.button === 2 ? 'altFire' : 'fire');
+    const action = MOUSE_MAP[e.button];
+    if (!action) return;
+    if (e.button === 1) e.preventDefault();
+    this.pressedThisFrame.add(action);
+    this.down.add(action);
   };
 
   private handleMouseUp = (e: MouseEvent) => {
-    if (e.button === 0) this.down.delete('fire');
-    if (e.button === 2) this.down.delete('altFire');
+    const action = MOUSE_MAP[e.button];
+    if (action) this.down.delete(action);
   };
 
   isDown(action: Action): boolean {
-    return this.down.has(action);
+    return this.enabled && this.down.has(action);
   }
 
   pressed(action: Action): boolean {
-    return this.pressedThisFrame.has(action);
+    return this.enabled && this.pressedThisFrame.has(action);
   }
 
-  /** Normalized move intent in local space (x = strafe, z = forward). */
+  /** Normalized move intent in local space (x = strafe, z = forward/back). */
   moveIntent(): { x: number; z: number; magnitude: number } {
     let x = 0;
     let z = 0;
-    if (this.down.has('forward')) z -= 1;
-    if (this.down.has('back')) z += 1;
-    if (this.down.has('left')) x -= 1;
-    if (this.down.has('right')) x += 1;
+    if (this.enabled) {
+      if (this.down.has('forward')) z -= 1;
+      if (this.down.has('back')) z += 1;
+      if (this.down.has('left')) x -= 1;
+      if (this.down.has('right')) x += 1;
+    }
     const len = Math.hypot(x, z);
     if (len > 0) {
       x /= len;
@@ -138,30 +176,50 @@ export class InputManager {
     return { x, z, magnitude: len > 0 ? 1 : 0 };
   }
 
+  // ---- programmatic input (tests, autoplayer) ---------------------------
+
+  setAction(action: Action, isDown: boolean): void {
+    if (isDown) {
+      if (!this.down.has(action)) this.pressedThisFrame.add(action);
+      this.down.add(action);
+    } else {
+      this.down.delete(action);
+    }
+  }
+
+  tap(action: Action): void {
+    this.pressedThisFrame.add(action);
+  }
+
+  addLook(dxPixels: number, dyPixels: number): void {
+    this.mouseDX += dxPixels;
+    this.mouseDY += dyPixels;
+  }
+
   /** Clear per-frame state. Call at the very end of each frame. */
   endFrame(): void {
     this.pressedThisFrame.clear();
-    this.mouseDownThisFrame.clear();
     this.mouseDX = 0;
     this.mouseDY = 0;
-    this.mousePixels = 0;
   }
 
-  /** Drop all held state (used on death / state transitions). */
+  /** Drop all held state (focus loss, death, state transitions). */
   releaseAll(): void {
     this.down.clear();
     this.pressedThisFrame.clear();
     this.mouseDX = 0;
     this.mouseDY = 0;
-    this.mousePixels = 0;
   }
 
   dispose(): void {
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
+    window.removeEventListener('blur', this.handleBlur);
+    document.removeEventListener('visibilitychange', this.handleBlur);
     document.removeEventListener('mousemove', this.handleMouseMove);
     document.removeEventListener('mousedown', this.handleMouseDown);
     document.removeEventListener('mouseup', this.handleMouseUp);
     document.removeEventListener('pointerlockchange', this.handlePointerLockChange);
+    document.removeEventListener('contextmenu', this.handleContextMenu);
   }
 }

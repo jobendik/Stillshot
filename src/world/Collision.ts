@@ -123,3 +123,44 @@ export function segmentClear(
   }
   return true;
 }
+
+/** Nearest hit distance of a ray against a set of boxes, or `maxDist` if clear. */
+export function rayDistance(origin: Vector3, dir: Vector3, boxes: Box3[], maxDist: number): number {
+  let best = maxDist;
+  for (const box of boxes) {
+    const t = rayVsBox(origin, dir, box, best);
+    if (t !== null && t < best) best = t;
+  }
+  return best;
+}
+
+/**
+ * Height of the highest walkable surface under a point that is at or below
+ * `feetY` (plus a small tolerance). Lets actors stand on top of cover.
+ */
+export function supportHeight(x: number, z: number, feetY: number, margin: number, boxes: Box3[], floorY: number): number {
+  let h = floorY;
+  for (const box of boxes) {
+    if (box.max.y > feetY + 0.06 || box.max.y <= h) continue;
+    if (x < box.min.x - margin || x > box.max.x + margin || z < box.min.z - margin || z > box.max.z + margin) continue;
+    h = box.max.y;
+  }
+  return h;
+}
+
+/**
+ * Swept point-vs-sphere: first distance along the segment (origin + dir * t,
+ * 0 <= t <= segLen) that comes within `radius` of `center`, or null.
+ */
+export function segmentVsSphere(origin: Vector3, dir: Vector3, segLen: number, center: Vector3, radius: number): number | null {
+  const rx = origin.x - center.x;
+  const ry = origin.y - center.y;
+  const rz = origin.z - center.z;
+  const b = rx * dir.x + ry * dir.y + rz * dir.z;
+  const c = rx * rx + ry * ry + rz * rz - radius * radius;
+  if (c > 0 && b > 0) return null;
+  const disc = b * b - c;
+  if (disc < 0) return null;
+  const t = Math.max(0, -b - Math.sqrt(disc));
+  return t > segLen ? null : t;
+}

@@ -1,146 +1,128 @@
-import {
-  BoxGeometry,
-  CapsuleGeometry,
-  CylinderGeometry,
-  Group,
-  Mesh,
-  type Object3D,
-  SphereGeometry,
-} from 'three';
+import { BoxGeometry, CylinderGeometry, Group, IcosahedronGeometry, Mesh, MeshStandardMaterial, type Object3D } from 'three';
 import type { WeaponKind } from '@/types';
-import { Materials } from './Materials';
 
 /**
- * Procedural low-poly models built from primitives. Interactive objects are
- * absolute black (Materials.interactive); hostile entities are glossy red
- * (Materials.enemy). No textures anywhere — the silhouette carries all meaning.
+ * Procedural models for everything you can pick up. Interactive objects are
+ * ink black — the silhouette carries all the meaning. Prototypes are built once
+ * and cloned, so pickups, held weapons and replay props all share geometry.
  */
 
-function box(w: number, h: number, d: number, mat = Materials.interactive): Mesh {
-  return new Mesh(new BoxGeometry(w, h, d), mat);
+/** Ink: anything you can hold. Slightly glossy so edges catch the key light. */
+export const inkMaterial = new MeshStandardMaterial({
+  color: 0x16161b,
+  roughness: 0.55,
+  metalness: 0,
+  flatShading: true,
+});
+
+function box(w: number, h: number, d: number): Mesh {
+  return new Mesh(new BoxGeometry(w, h, d), inkMaterial);
 }
 
-/**
- * Dispose every BufferGeometry under a model before discarding it. Materials are
- * shared singletons (Materials.*) and must NOT be disposed here. Cloned meshes
- * share geometry references, so a double-dispose is harmless in three.js.
- */
-export function disposeModelGeometry(root: Object3D): void {
-  root.traverse((o) => {
-    const mesh = o as Mesh;
-    if (mesh.geometry) mesh.geometry.dispose();
-  });
+function cyl(r1: number, r2: number, len: number, seg = 8): Mesh {
+  const m = new Mesh(new CylinderGeometry(r1, r2, len, seg), inkMaterial);
+  m.rotation.x = Math.PI / 2;
+  return m;
 }
 
-/** A held/pickup weapon. Origin at the grip; barrel points down -Z. */
-export function buildWeaponModel(kind: WeaponKind): Group {
+function place<T extends Object3D>(o: T, x: number, y: number, z: number): T {
+  o.position.set(x, y, z);
+  return o;
+}
+
+/** Origin at the grip; barrel / blade points down -Z. */
+function buildWeaponPrototype(kind: WeaponKind): Group {
   const g = new Group();
   switch (kind) {
     case 'pistol': {
-      const body = box(0.07, 0.11, 0.22);
-      body.position.set(0, 0.02, -0.06);
-      const grip = box(0.06, 0.13, 0.08);
-      grip.position.set(0, -0.07, 0.04);
-      grip.rotation.x = 0.25;
-      g.add(body, grip);
+      const grip = place(box(0.055, 0.13, 0.075), 0, -0.06, 0.035);
+      grip.rotation.x = 0.22;
+      g.add(place(box(0.062, 0.085, 0.24), 0, 0.03, -0.07), grip, place(box(0.02, 0.03, 0.06), 0, -0.02, -0.03), place(cyl(0.018, 0.018, 0.05), 0, 0.035, -0.2));
       break;
     }
     case 'rifle': {
-      const body = box(0.07, 0.1, 0.62);
-      body.position.set(0, 0.0, -0.18);
-      const stock = box(0.06, 0.11, 0.18);
-      stock.position.set(0, -0.01, 0.18);
-      const mag = box(0.05, 0.16, 0.08);
-      mag.position.set(0, -0.11, -0.05);
-      const grip = box(0.05, 0.11, 0.07);
-      grip.position.set(0, -0.08, 0.05);
-      g.add(body, stock, mag, grip);
+      const grip = place(box(0.05, 0.12, 0.06), 0, -0.08, 0.06);
+      grip.rotation.x = 0.25;
+      const mag = place(box(0.045, 0.19, 0.075), 0, -0.12, -0.08);
+      mag.rotation.x = -0.18;
+      g.add(
+        place(box(0.065, 0.095, 0.5), 0, 0.01, -0.12),
+        place(cyl(0.02, 0.02, 0.34), 0, 0.02, -0.52),
+        place(box(0.05, 0.1, 0.26), 0, -0.005, 0.24),
+        place(box(0.03, 0.035, 0.2), 0, 0.075, -0.1),
+        mag,
+        grip,
+      );
       break;
     }
     case 'shotgun': {
-      const body = box(0.08, 0.1, 0.7);
-      body.position.set(0, 0, -0.2);
-      const barrel = new Mesh(new CylinderGeometry(0.035, 0.035, 0.5, 10), Materials.interactive);
-      barrel.rotation.x = Math.PI / 2;
-      barrel.position.set(0, 0.03, -0.28);
-      const stock = box(0.06, 0.12, 0.2);
-      stock.position.set(0, -0.02, 0.2);
-      g.add(body, barrel, stock);
+      const stock = place(box(0.055, 0.11, 0.28), 0, -0.03, 0.22);
+      stock.rotation.x = -0.12;
+      g.add(
+        place(box(0.07, 0.085, 0.36), 0, 0, -0.06),
+        place(cyl(0.03, 0.03, 0.56, 10), -0.018, 0.022, -0.46),
+        place(cyl(0.03, 0.03, 0.56, 10), 0.018, 0.022, -0.46),
+        place(box(0.075, 0.05, 0.2), 0, -0.035, -0.36),
+        stock,
+      );
       break;
     }
     case 'nailgun': {
-      const body = box(0.1, 0.16, 0.3);
-      body.position.set(0, 0, -0.08);
-      const nozzle = new Mesh(new CylinderGeometry(0.02, 0.03, 0.28, 8), Materials.interactive);
-      nozzle.rotation.x = Math.PI / 2;
-      nozzle.position.set(0, 0.02, -0.28);
-      const grip = box(0.06, 0.14, 0.08);
-      grip.position.set(0, -0.12, 0.05);
-      g.add(body, nozzle, grip);
+      const grip = place(box(0.055, 0.15, 0.075), 0, -0.1, 0.05);
+      grip.rotation.x = 0.2;
+      g.add(
+        place(box(0.085, 0.13, 0.26), 0, 0.01, -0.06),
+        place(cyl(0.012, 0.03, 0.34, 6), 0, 0.03, -0.34),
+        place(box(0.05, 0.2, 0.05), 0, -0.07, -0.13),
+        grip,
+      );
       break;
     }
     case 'bat': {
-      const handle = new Mesh(new CylinderGeometry(0.025, 0.03, 0.32, 8), Materials.interactive);
-      handle.position.set(0, 0, 0.16);
-      handle.rotation.x = Math.PI / 2;
-      const barrel = new Mesh(new CylinderGeometry(0.05, 0.035, 0.6, 10), Materials.interactive);
-      barrel.position.set(0, 0, -0.32);
-      barrel.rotation.x = Math.PI / 2;
-      g.add(handle, barrel);
+      g.add(place(cyl(0.024, 0.03, 0.34), 0, 0, 0.14), place(cyl(0.052, 0.03, 0.66, 10), 0, 0, -0.36), place(cyl(0.036, 0.036, 0.03), 0, 0, 0.32));
       break;
     }
     case 'katana': {
-      const blade = box(0.02, 0.04, 0.95);
-      blade.position.set(0, 0, -0.5);
-      const guard = box(0.12, 0.04, 0.03);
-      guard.position.set(0, 0, -0.02);
-      const handle = new Mesh(new CylinderGeometry(0.022, 0.022, 0.24, 8), Materials.interactive);
-      handle.rotation.x = Math.PI / 2;
-      handle.position.set(0, 0, 0.12);
-      g.add(blade, guard, handle);
+      const blade = place(box(0.012, 0.045, 0.98), 0, 0.004, -0.53);
+      const tip = place(box(0.012, 0.032, 0.06), 0, 0.012, -1.03);
+      tip.rotation.x = 0.35;
+      g.add(blade, tip, place(box(0.11, 0.075, 0.016), 0, 0, -0.03), place(cyl(0.02, 0.02, 0.27), 0, 0, 0.11));
       break;
     }
     case 'fist':
     default:
       break;
   }
-  return g;
-}
-
-/** A glossy-red humanoid adversary. Height ~1.76m, feet at y=0. */
-export function buildEnemyModel(): Group {
-  const g = new Group();
-  const mat = Materials.enemy;
-
-  const torso = new Mesh(new BoxGeometry(0.42, 0.62, 0.26), mat);
-  torso.position.y = 1.12;
-  const hips = new Mesh(new BoxGeometry(0.38, 0.2, 0.24), mat);
-  hips.position.y = 0.78;
-  const head = new Mesh(new BoxGeometry(0.24, 0.26, 0.24), mat);
-  head.position.y = 1.58;
-  const neck = new Mesh(new BoxGeometry(0.12, 0.08, 0.12), mat);
-  neck.position.y = 1.43;
-
-  const armL = new Mesh(new CapsuleGeometry(0.08, 0.42, 4, 8), mat);
-  armL.position.set(-0.3, 1.12, 0);
-  const armR = armL.clone();
-  armR.position.x = 0.3;
-
-  const legL = new Mesh(new CapsuleGeometry(0.1, 0.6, 4, 8), mat);
-  legL.position.set(-0.12, 0.42, 0);
-  const legR = legL.clone();
-  legR.position.x = 0.12;
-
-  g.add(torso, hips, head, neck, armL, armR, legL, legR);
   g.traverse((o) => {
     o.castShadow = true;
   });
   return g;
 }
 
-/** A black throwable (billiard ball / monitor stand-in). */
+const weaponProtos = new Map<WeaponKind, Group>();
+
+export function buildWeaponModel(kind: WeaponKind): Group {
+  let proto = weaponProtos.get(kind);
+  if (!proto) {
+    proto = buildWeaponPrototype(kind);
+    weaponProtos.set(kind, proto);
+  }
+  return proto.clone(true);
+}
+
+const orbGeometry = new IcosahedronGeometry(1, 1);
+
+/** A black throwable: a faceted ink orb. */
 export function buildThrowableModel(radius: number): Mesh {
-  const m = new Mesh(new SphereGeometry(radius, 12, 10), Materials.interactive);
+  const m = new Mesh(orbGeometry, inkMaterial);
+  m.scale.setScalar(radius);
   m.castShadow = true;
   return m;
+}
+
+/** The player's bare hand (shown when punching / grabbing). */
+export function buildFistModel(): Group {
+  const g = new Group();
+  g.add(place(box(0.085, 0.085, 0.11), 0, 0, -0.04), place(box(0.07, 0.07, 0.3), 0, -0.01, 0.16));
+  return g;
 }
