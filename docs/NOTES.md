@@ -65,6 +65,8 @@ During the loan the replay clock advances at 30 % of real time while world time 
 
 **Movement.** Jump apex raised from 1.14 m to 1.36 m and top surfaces made standable, so waist-high cover can be mounted. Jump buffering (0.12 s) and coyote time (0.1 s). Acceleration is an exponential approach rather than `min(1, a·dt)`, so it is the same at any frame rate.
 
+**Hang time is deferred, not free.** The original capped time at 25 % while airborne with jump held, which made bunny-hopping a 4× discount on movement. The cap stays (a moment to think in mid-air is good), but the time held back is booked and 85 % of it is collected on landing. Measured: 3 s of walking costs 3.07 world-s; 3 s of continuous hopping over the same ground now costs 2.60 instead of roughly a quarter of that.
+
 **Fracture.** See README. Two things worth recording: glass is fractured in 2D by zeroing the thin coordinate of every Voronoi seed (the first attempt, stretching the pane before seeding, sliced it into *layers*); and the shard shader has a depth-only twin so hanging debris casts shadows.
 
 **Lens instead of CRT.** Curvature, scanlines, flicker and constant chromatic aberration all cost clarity in a game about reading small fast objects, and they were someone else's look. Replaced with: HDR scene target with MSAA, quarter-res bloom keyed on saturation (red crystal blooms, white walls do not), a shoulder-only tone curve so paper stays paper, and grading by time state. Grain is added after sRGB encoding (in linear it crawled over black objects).
@@ -116,9 +118,9 @@ Other: idle rate 0.00500; a 3 s stall with 6000 px of queued mouse movement adva
 
 ## 6. What was and was not verified
 
-Verified by automated test (`npm test`, 78 assertions, all passing):
+Verified by automated test (`npm test`, 80 assertions, all passing):
 
-- frame-rate and report-rate independence of look cost; stall safety; idle rate; action costs; loan symmetry and cooldown
+- frame-rate and report-rate independence of look cost; stall safety; idle rate; action costs; hang-time repayment; loan symmetry and cooldown
 - no tunnelling at 20 fps or 240 fps; glass at 20 fps
 - friendly fire; katana split (and no protection without a swing); slab reflection and piercing; disarm and mid-air catch; thrown object stops a round; transfer and its line-of-sight rule; melee landing and whiffing; no fire, grab or strike through walls; Constants; still fields
 - audio graph: every sound at every time scale without error, voice cap, voice release
@@ -141,7 +143,7 @@ Verified by looking at captured frames: the screenshots in `docs/after/`.
 
 - No key remapping, gamepad or touch.
 - Shards land on the floor plane only; they pass through cover blocks and plinths.
-- Navigation is a grid baked from solid boxes; figures cannot climb onto cover, so standing on a block is safe from melee (not from rounds).
+- Navigation is a grid baked from solid boxes; figures cannot climb onto cover. They can still strike you at its edge, and rounds do not care, but the middle of a large block (the dais in plate 08) is out of reach of anything unarmed.
 - Aim telegraph lines are not recorded, so they do not appear in the replay.
 - The replay cannot be exported.
 - The autoplayer cannot use Borrowed Time; plate 05's opening is only "completed" in tests because lethal hits are counted, not applied.

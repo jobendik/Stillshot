@@ -177,6 +177,39 @@ const groups = {
     }, sandbox());
     check('standing still holds time at 1/200', Math.abs(idle - 0.005) < 0.0005, `rate ${idle.toFixed(5)}`);
 
+    const hang = await page.evaluate((def) => {
+      const g = window.__stillshot;
+      const run = (hop) => {
+        T.start(def);
+        T.step(0.5);
+        const w0 = g.time.worldElapsed;
+        const z0 = g.player.pos.z;
+        g.input.setAction('forward', true);
+        for (let i = 0; i < 180; i++) {
+          if (hop) {
+            g.input.setAction('jump', true);
+            if (g.player.grounded) g.input.tap('jump');
+          }
+          g.debugStep(1 / 60, 1);
+        }
+        g.input.releaseAll();
+        T.step(1.5);
+        return { world: g.time.worldElapsed - w0, dist: Math.abs(g.player.pos.z - z0) };
+      };
+      // One held jump: how slow does the world get at the top of the arc?
+      T.start(def);
+      g.input.setAction('forward', true);
+      T.step(0.4);
+      g.input.setAction('jump', true);
+      g.input.tap('jump');
+      T.step(0.45);
+      const apexScale = g.time.scale;
+      g.input.releaseAll();
+      return { walk: run(false), hop: run(true), apexScale };
+    }, sandbox());
+    check('holding jump in the air slows the world', hang.apexScale < 0.3, `scale ${hang.apexScale.toFixed(3)} at the apex`);
+    check('…but hopping everywhere is not a discount: hang time is repaid on landing', hang.hop.world > hang.walk.world * 0.8, `walking ${hang.walk.world.toFixed(2)}s, hopping ${hang.hop.world.toFixed(2)}s over ${hang.hop.dist.toFixed(1)}m`);
+
     const fire = await page.evaluate((def) => {
       const g = window.__stillshot;
       T.start(def);

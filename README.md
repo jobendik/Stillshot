@@ -34,7 +34,7 @@ Then open <http://localhost:5173>. Needs a desktop browser with WebGL2, a keyboa
 | `npm run dev` | Dev server with hot reload |
 | `npm run build` | Type-check, then production bundle in `dist/` |
 | `npm run preview` | Serve the production bundle |
-| `npm test` | Build, then run the regression suite (78 assertions, headless Chromium) |
+| `npm test` | Build, then run the regression suite (80 assertions, headless Chromium) |
 | `npm run capture` | Regenerate the screenshots in `docs/after/` |
 
 The test and capture scripts use Playwright. If it has no browser yet:
@@ -57,7 +57,7 @@ npx playwright install chromium
 | **Right mouse** / **Q** | Throw what you are holding |
 | **E** | Take or catch |
 | **F** | Strike with whatever is in hand |
-| **Space** | Jump (you can mount waist-high cover). Hold while airborne to hang in slow time |
+| **Space** | Jump (you can mount waist-high cover). Hold while airborne to hang in slow time (the time you held back is collected when you land) |
 | **Shift** | Transfer into the figure under the crosshair |
 | **C** (or **V**, middle mouse) | Borrow time |
 | **R** | Expose the plate again |

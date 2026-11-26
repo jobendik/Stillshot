@@ -32,6 +32,8 @@ export const TIME_ATTACK_RATE = 22;
 export const TIME_RELEASE_RATE = 9;
 /** While airborne with jump held the scale is capped here — aerial planning. */
 export const JUMP_DILATION_CAP = 0.25;
+/** Fraction of the time deferred by hanging in the air that is collected on landing. */
+export const HANG_REPAY = 0.85;
 /** Hard clamp on one real frame delta, so a stalled tab cannot leap the world. */
 export const MAX_FRAME_DT = 1 / 20;
 

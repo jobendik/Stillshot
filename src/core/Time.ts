@@ -3,6 +3,7 @@ import {
   BORROW_MAX,
   BORROW_REPAY_RATE,
   BORROW_REPLAY_RATE,
+  HANG_REPAY,
   JUMP_DILATION_CAP,
   MAX_FRAME_DT,
   MAX_TIME_SCALE,
@@ -44,6 +45,10 @@ export type BorrowPhase = 'idle' | 'borrowing' | 'repaying';
  * Discrete actions call `spendAction(seconds)`: time snaps to full speed until
  * that much has been released. A shot is never free.
  *
+ * Holding jump while airborne caps the rate (a moment to think in mid-air), but
+ * the time held back is repaid on landing — hang time re-orders time, it does
+ * not create it.
+ *
  * BORROWED TIME breaks the identity between the subjective and world clocks on
  * purpose. While borrowing, the world rate is exactly zero and the real seconds
  * that pass are booked as debt. When the loan ends the world collects: it runs
@@ -81,6 +86,8 @@ export class TimeController {
   debtPeak = 0;
 
   private pendingAction = 0;
+  /** World-seconds deferred by hanging in the air, owed on landing. */
+  private hangDebt = 0;
 
   /** Advance all clocks by one rendered frame. */
   update(rawDt: number, inputs: TimeInputs): void {
@@ -100,7 +107,17 @@ export class TimeController {
 
     const eased = mag * mag * (3 - 2 * mag);
     let target = MIN_TIME_SCALE + (MAX_TIME_SCALE - MIN_TIME_SCALE) * eased;
-    if (inputs.airborne && inputs.jumpHeld) target = Math.min(target, JUMP_DILATION_CAP);
+    if (inputs.airborne && inputs.jumpHeld) {
+      // Hang time: the world is held back while you are in the air — but the
+      // time you would have spent is only deferred. It is collected on landing.
+      if (target > JUMP_DILATION_CAP) {
+        this.hangDebt += (target - JUMP_DILATION_CAP) * dt;
+        target = JUMP_DILATION_CAP;
+      }
+    } else if (!inputs.airborne && this.hangDebt > 0) {
+      this.spendAction(Math.min(0.45, this.hangDebt * HANG_REPAY));
+      this.hangDebt = 0;
+    }
 
     if (this.pendingAction > 0) {
       // An action is being paid for: time runs flat out until it is covered.
@@ -198,6 +215,7 @@ export class TimeController {
     this.magnitude = 0;
     this.lookSpeed = 0;
     this.pendingAction = 0;
+    this.hangDebt = 0;
     this.borrowPhase = 'idle';
     this.debt = 0;
     this.debtPeak = 0;
