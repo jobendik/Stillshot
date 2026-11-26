@@ -569,6 +569,70 @@ const groups = {
   },
 
   // -------------------------------------------------------------------------
+  async mix(page) {
+    // Render the synthesis OFFLINE and measure it. This is not listening — it
+    // cannot say whether anything sounds good — but it can say whether a sound
+    // is silent, clipped, or fails to follow the clock.
+    const m = await page.evaluate(async () => {
+      const Engine = window.__stillshot.audio.constructor;
+      const RealCtx = window.AudioContext;
+      const render = async (seconds, setup) => {
+        let made = null;
+        window.AudioContext = function () {
+          made = new OfflineAudioContext(2, Math.ceil(44100 * seconds), 44100);
+          Object.defineProperty(made, 'state', { get: () => 'running' });
+          return made;
+        };
+        const engine = new Engine();
+        engine.resume();
+        window.AudioContext = RealCtx;
+        setup(engine);
+        const buf = await made.startRendering();
+        const l = buf.getChannelData(0);
+        const r = buf.getChannelData(1);
+        let peak = 0;
+        let sum = 0;
+        let zc = 0;
+        let active = 0;
+        let nan = false;
+        let prev = 0;
+        for (let i = 0; i < l.length; i++) {
+          const v = (l[i] + r[i]) * 0.5;
+          if (Number.isNaN(v)) nan = true;
+          peak = Math.max(peak, Math.abs(l[i]), Math.abs(r[i]));
+          sum += v * v;
+          if (Math.abs(v) > 0.002) {
+            active++;
+            if ((v > 0) !== (prev > 0)) zc++;
+            prev = v;
+          }
+        }
+        // Zero-crossing rate over the audible part: a cheap proxy for brightness.
+        return { peak, rms: Math.sqrt(sum / l.length), zcr: active > 0 ? zc / active : 0, active: active / 44100, nan, left: Math.max(...l.slice(0, 20000).map(Math.abs)), right: Math.max(...r.slice(0, 20000).map(Math.abs)) };
+      };
+      const names = ['shoot', 'shotgun', 'nail', 'glass', 'impact', 'shatter', 'slice', 'slash', 'deflect', 'ricochet', 'throw', 'thud', 'punch', 'pickup', 'catch', 'dryfire', 'swing', 'windup', 'hotswitch', 'death', 'ui', 'whiz', 'tick', 'arrive', 'borrow', 'collect', 'repaid', 'chime', 'complete'];
+      const each = {};
+      for (const n of names) each[n] = await render(3.5, (e) => { e.setTimeScale(1); e.play(n, null, 1.0); });
+      const flow = await render(3, (e) => { e.setTimeScale(1); e.play('shatter'); });
+      const still = await render(3, (e) => { e.setTimeScale(0.005); e.play('shatter'); });
+      const flood = await render(3, (e) => { e.setTimeScale(1); for (let i = 0; i < 60; i++) e.play(i % 3 === 0 ? 'shotgun' : i % 3 === 1 ? 'shatter' : 'shoot'); });
+      const leftSide = await render(1, (e) => { e.setTimeScale(1); e.setListener({ x: 0, y: 1.6, z: 0 }, { x: 1, y: 0, z: 0 }); e.play('shoot', { x: -6, y: 1.6, z: 0 }); });
+      const near = await render(1, (e) => { e.setTimeScale(1); e.setListener({ x: 0, y: 1.6, z: 0 }, { x: 1, y: 0, z: 0 }); e.play('shoot', { x: 0, y: 1.6, z: -2 }); });
+      const far = await render(1, (e) => { e.setTimeScale(1); e.setListener({ x: 0, y: 1.6, z: 0 }, { x: 1, y: 0, z: 0 }); e.play('shoot', { x: 0, y: 1.6, z: -30 }); });
+      return { each, flow, still, flood, leftSide, near, far };
+    });
+    const silent = Object.entries(m.each).filter(([, v]) => v.peak < 0.01).map(([k]) => k);
+    const hot = Object.entries(m.each).filter(([, v]) => v.peak > 0.99).map(([k]) => k);
+    const bad = Object.entries(m.each).filter(([, v]) => v.nan).map(([k]) => k);
+    check('every sound renders an audible signal', silent.length === 0, silent.length ? `silent: ${silent.join(', ')}` : `quietest peak ${Math.min(...Object.values(m.each).map((v) => v.peak)).toFixed(3)}`);
+    check('no single sound clips', hot.length === 0 && bad.length === 0, hot.length ? `at full scale: ${hot.join(', ')}` : `loudest peak ${Math.max(...Object.values(m.each).map((v) => v.peak)).toFixed(3)}`);
+    check('a flood of the loudest sounds stays under full scale', m.flood.peak < 1.0, `peak ${m.flood.peak.toFixed(3)}`);
+    check('the same sound is darker and longer when time is still', m.still.zcr < m.flow.zcr * 0.75 && m.still.active > m.flow.active * 1.2, `brightness ${m.flow.zcr.toFixed(3)} → ${m.still.zcr.toFixed(3)}, length ${m.flow.active.toFixed(2)}s → ${m.still.active.toFixed(2)}s`);
+    check('a sound to the left is louder in the left ear', m.leftSide.left > m.leftSide.right * 1.5, `L ${m.leftSide.left.toFixed(3)} / R ${m.leftSide.right.toFixed(3)}`);
+    check('a distant sound is quieter than a near one', m.far.peak < m.near.peak * 0.6, `near ${m.near.peak.toFixed(3)}, far ${m.far.peak.toFixed(3)}`);
+  },
+
+  // -------------------------------------------------------------------------
   async replay(page) {
     const info = await playPlate(page, 0, { maxSeconds: 120 });
     check('the bot finishes plate 01', info.state === 'level-complete', `state ${info.state}`);

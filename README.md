@@ -34,7 +34,7 @@ Then open <http://localhost:5173>. Needs a desktop browser with WebGL2, a keyboa
 | `npm run dev` | Dev server with hot reload |
 | `npm run build` | Type-check, then production bundle in `dist/` |
 | `npm run preview` | Serve the production bundle |
-| `npm test` | Build, then run the regression suite (80 assertions, headless Chromium) |
+| `npm test` | Build, then run the regression suite (87 assertions, headless Chromium) |
 | `npm run capture` | Regenerate the screenshots in `docs/after/` |
 
 The test and capture scripts use Playwright. If it has no browser yet:
@@ -139,7 +139,7 @@ docs/         NOTES.md (decisions, measurements, limits), before/ and after/ scr
 
 ## Honest limits
 
-- Tested by automation in headless Chromium only. **No human has playtested this build**, nobody has listened to the audio, and it has not been run on a physical GPU, in Firefox or in Safari. See `docs/NOTES.md` for exactly what was and was not verified.
+- Tested by automation in headless Chromium only. **No human has playtested this build**, nobody has listened to the audio (its levels were measured, not heard), and it has not been run on a physical GPU, in Firefox or in Safari. See `docs/NOTES.md` for exactly what was and was not verified.
 - Keyboard and mouse only. No gamepad, touch or key remapping.
 - The autoplayer proves plates *can* be finished; it does not prove they are well paced for a person. Pars are estimates.
 

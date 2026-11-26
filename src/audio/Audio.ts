@@ -46,6 +46,40 @@ const GATE: Partial<Record<SoundName, number>> = {
   arrive: 0.02,
 };
 
+/**
+ * Per-sound trim. These were set from measurement, not by ear: each sound was
+ * rendered offline and its peak level read, then trimmed so that warnings
+ * (wind-up, near miss, arrival, tick) sit near -20 dBFS, weapons near -11, and
+ * the two loudest events (transfer, borrowing) no longer tower over the rest.
+ */
+const LEVEL: Partial<Record<SoundName, number>> = {
+  shoot: 2.0,
+  shotgun: 1.8,
+  nail: 2.2,
+  impact: 1.8,
+  shatter: 1.6,
+  slice: 1.5,
+  slash: 4.0,
+  deflect: 1.5,
+  ricochet: 1.6,
+  throw: 6.0,
+  swing: 6.0,
+  windup: 2.8,
+  thud: 1.6,
+  punch: 1.5,
+  pickup: 1.4,
+  dryfire: 3.0,
+  hotswitch: 0.7,
+  whiz: 3.0,
+  tick: 2.2,
+  arrive: 2.0,
+  borrow: 0.7,
+  collect: 1.6,
+  repaid: 1.4,
+  chime: 1.5,
+  ui: 2.8,
+};
+
 /** Sounds that are dropped first when the mixer is saturated. */
 const LOW_PRIORITY = new Set<SoundName>(['impact', 'whiz', 'tick', 'thud', 'ricochet']);
 
@@ -211,7 +245,7 @@ export class AudioEngine {
     this.reverbSend.gain.setTargetAtTime(borrowing ? 0.75 : lerp(0.5, 0.14, norm), t, 0.1);
     if (this.pad) {
       this.pad.filter.frequency.setTargetAtTime(borrowing ? 110 : lerp(170, 1300, norm), t, 0.1);
-      this.pad.gain.gain.setTargetAtTime(borrowing ? 0.02 : lerp(0.05, 0.075, norm), t, 0.2);
+      this.pad.gain.gain.setTargetAtTime(borrowing ? 0.03 : lerp(0.1, 0.14, norm), t, 0.2);
     }
   }
 
@@ -223,7 +257,7 @@ export class AudioEngine {
     this.stopAmbient();
     const ctx = this.ctx;
     const gain = ctx.createGain();
-    gain.gain.value = 0.05;
+    gain.gain.value = 0.1;
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.value = 300;
@@ -376,9 +410,11 @@ export class AudioEngine {
       if (d > 0.4) pan = clamp(((dx * this.listener.rx + dz * this.listener.rz) / d) * 0.9, -1, 1);
       amp = 1 / (1 + d * 0.11);
     }
-    const isUi = name === 'ui' || name === 'complete' || name === 'chime';
+    // Interface sounds, the kill motif, and a Constant's tick are outside the
+    // player's time: they are not pitched or filtered by the clock.
+    const isUi = name === 'ui' || name === 'complete' || name === 'chime' || name === 'tick';
     const out = ctx.createGain();
-    out.gain.value = amp;
+    out.gain.value = amp * (LEVEL[name] ?? 1);
     const panner = ctx.createStereoPanner();
     panner.pan.value = pan;
     out.connect(panner);

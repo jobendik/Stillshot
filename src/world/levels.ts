@@ -121,7 +121,7 @@ const GLASS_HOUSE: LevelDef = {
   name: 'GLASS HOUSE',
   briefing:
     'plate 02. you arrive with nothing.\n\nthe black things can be thrown.\nanything thrown knocks a weapon out of a hand —\nand a weapon in the air belongs to whoever takes it.\n\nglass will not protect anyone.',
-  afterword: 'you never touched the floor for a weapon. noted.',
+  afterword: 'everything in the house was glass, in the end.',
   bounds: B2,
   floorY: 0,
   spawn: { pos: [0, 0, 9.5], yaw: 0 },
@@ -202,7 +202,7 @@ const CROSSFIRE: LevelDef = {
   name: 'CROSSFIRE',
   briefing:
     'plate 03. they are on both sides of you.\n\nthey fire at where you are standing.\na round that misses you does not stop being a round.\n\nthe blade on the plinth does not block.\nswing into a round and it splits —\nboth halves go where you are looking.',
-  afterword: 'most of them were killed by each other. you only moved.',
+  afterword: 'a round that misses is not wasted. the archive records where each one ended.',
   bounds: B3,
   floorY: 0,
   spawn: { pos: [0, 0, 1], yaw: 0 },
@@ -275,7 +275,7 @@ const TRANSPOSITION: LevelDef = {
   name: 'TRANSPOSITION',
   briefing:
     'plate 04. three rooms. no doors.\n\nthe instrument was never meant to hold a person.\nit is holding you anyway — and it does not much care\nwhich body it is holding you in.\n\nlook at one of them. [shift].\nthe body you leave will break.\nwhat they were carrying will still be in the air.',
-  afterword: 'four bodies. one observer. the count is consistent.',
+  afterword: 'however many bodies it took: one observer. the count is consistent.',
   bounds: B4,
   floorY: 0,
   spawn: { pos: [0, 0, 10.5], yaw: 0 },

@@ -229,6 +229,9 @@ export class ReplayStage {
     this.ctx.player.viewmodel.group.visible = fp;
     if (fp) this.ctx.player.viewmodel.apply(near.player.view);
     this.cine.update(this.ctx.camera, shot, this.subject, this.tau, realDt, this.outroT);
+    // Never let the player's own body fill the frame: if the camera has ended
+    // up on top of it, it steps out of the shot.
+    if (!fp && this.ctx.camera.position.distanceToSquared(this.head) < 1.7 * 1.7) this.avatar.root.visible = false;
   }
 
   private posePlayer(a: PlayerSample, b: PlayerSample, t: number, span: number): void {

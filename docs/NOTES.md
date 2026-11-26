@@ -114,16 +114,26 @@ Other: idle rate 0.00500; a 3 s stall with 6000 px of queued mouse movement adva
 
 **Bundle**: game code 186 kB (60 kB gzip), three.js 475 kB (120 kB gzip). Before: 73 kB and 485 kB.
 
+**Mix** (each sound rendered offline through the full chain, peak dBFS; `node scripts/mix.mjs`):
+
+| | weapons | shatter | warnings (wind-up, near miss, arrival, tick) | handling (swing, throw, pickup) | transfer / borrow |
+| --- | --- | --- | --- | --- | --- |
+| Before trimming | −17 … −20 | −16.5 | −25 … −31 | −22 … −38 | −7 |
+| After | −12 … −13 | −11.6 | −19 … −21 | −19 … −23 | −10 … −11 |
+
+The same shatter rendered at stillness is measurably darker (zero-crossing rate 0.088 → 0.027) and longer (0.74 s → 1.10 s) than at full speed; a sound 6 m to the left is 12× louder in the left channel; 30 m away it is 0.28× the level it is at 2 m. A Constant's tick is routed around the time filter and measures the same (−18.8 dBFS) whether time is flowing or still.
+
 **GPU frame time: not measured.** There is no GPU in the test environment; the software rasteriser's timings mean nothing for real hardware. Draw calls and triangle counts above are modest, the heaviest fragment work is one full-screen composite plus four quarter-res taps, and there is a render-scale setting — but 60 fps on real hardware is an expectation, not a measurement.
 
 ## 6. What was and was not verified
 
-Verified by automated test (`npm test`, 80 assertions, all passing):
+Verified by automated test (`npm test`, 87 assertions, all passing):
 
 - frame-rate and report-rate independence of look cost; stall safety; idle rate; action costs; hang-time repayment; loan symmetry and cooldown
 - no tunnelling at 20 fps or 240 fps; glass at 20 fps
 - friendly fire; katana split (and no protection without a swing); slab reflection and piercing; disarm and mid-air catch; thrown object stops a round; transfer and its line-of-sight rule; melee landing and whiffing; no fire, grab or strike through walls; Constants; still fields
 - audio graph: every sound at every time scale without error, voice cap, voice release
+- mix (offline render): no sound silent or clipping, a flood stays under full scale, stillness makes a sound darker and longer, left is left, far is quieter
 - recording: every kill present, with its shatter, with its figure before and not after; ordering; playback poses match recorded poses to < 2 cm; playback does not advance the game clock; scrub, hold, camera modes, skip, retry; progress saved
 - all eight plates completable by the autoplayer (with lethal hits counted rather than applied); identical inputs give identical runs
 - no growth in GPU resources across retries; pause freezes everything and resumes without stuck keys; death freezes the world and R restarts clean
@@ -133,7 +143,7 @@ Verified by looking at captured frames: the screenshots in `docs/after/`.
 **Not verified:**
 
 - **Fun.** No human has played this build. Every claim about feel, pacing, difficulty and whether the new mechanics are enjoyable is design judgement.
-- **Audio by ear.** The synthesis code runs without error. Nobody has heard it. Balance, harshness at low time scales, and whether the kill motif reads as a phrase in the replay are unknown.
+- **Audio by ear.** Nobody has heard it. What *has* been done is measurement: every sound was rendered offline and checked for silence, clipping, level, stereo placement, distance roll-off and for getting darker and longer as time slows, and the mix was trimmed from those numbers. That establishes that the sounds exist at sensible levels and follow the clock. It says nothing about whether they are pleasant, harsh, or right.
 - **Real GPUs, real frame times, real pointer lock, real mice.** Pointer-lock loss/regain is simulated in the test.
 - **Firefox, Safari, any mobile browser.** The lens pass needs WebGL2 with float render targets (falls back to 8-bit if `EXT_color_buffer_float` is missing; that path has not been exercised).
 - **Fairness with a human at the controls.** The autoplayer takes many "lethal" hits per plate because it strafes blindly; that says nothing either way.
