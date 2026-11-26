@@ -16,7 +16,7 @@ const DEFS: Record<WeaponKind, WeaponDef> = {
     burstInterval: 0,
     pelletCount: 0,
     spread: 0,
-    cooldown: 0.34,
+    cooldown: 0.3,
     projectileSpeed: 0,
     piercing: false,
     glass: 'stop',
@@ -100,7 +100,7 @@ const DEFS: Record<WeaponKind, WeaponDef> = {
 
   nailgun: {
     kind: 'nailgun',
-    displayName: 'FISHGUN',
+    displayName: 'SPIKE',
     category: 'firearm',
     ammo: 3,
     fireMode: 'semi',

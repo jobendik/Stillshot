@@ -27,3 +27,11 @@ export function angleDelta(a: number, b: number): number {
   if (d < -Math.PI) d += Math.PI * 2;
   return d;
 }
+
+export const smoothstep = (a: number, b: number, x: number): number => {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+
+/** Frame-rate independent exponential approach factor. */
+export const damp = (rate: number, dt: number): number => 1 - Math.exp(-rate * dt);

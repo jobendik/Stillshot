@@ -2,7 +2,7 @@ import './ui/styles.css';
 import { Game } from '@/core/Game';
 
 /**
- * Entry point. Boots the StillShot temporal engine once the DOM is ready.
+ * Entry point. Boots STILLSHOT once the DOM is ready.
  */
 function boot(): void {
   const canvas = document.getElementById('scene') as HTMLCanvasElement | null;

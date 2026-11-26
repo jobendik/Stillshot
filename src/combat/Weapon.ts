@@ -6,15 +6,16 @@ import { getWeaponDef } from '@/config/weapons';
  * the inter-shot cooldown, and burst sequencing. There is NO reload — once the
  * magazine is empty the weapon is spent (and gets dropped or thrown).
  *
- * `update()` is fed whatever delta the owner runs on: the player passes
- * unscaled (real) time for crisp triggers; enemies pass scaled (world) time, so
- * their fire rate naturally bogs down as the player freezes time.
+ * `update()` is fed whatever clock the owner lives on. Enemies pass world time.
+ * The player passes SUBJECTIVE time — the time they have spent — so a gun only
+ * becomes ready again by moving, looking or acting. You cannot stand still and
+ * empty a magazine for free.
  */
 export class WeaponInstance {
   readonly def: WeaponDef;
   ammo: number;
   durability: number;
-  private cooldown = 0;
+  cooldown = 0;
   private burstLeft = 0;
   private burstTimer = 0;
 
@@ -35,6 +36,15 @@ export class WeaponInstance {
 
   get readyToFire(): boolean {
     return this.cooldown <= 0 && this.ammo > 0 && this.burstLeft <= 0;
+  }
+
+  /** 1 → 0 as the weapon recovers from its last trigger pull. */
+  get cooldownFraction(): number {
+    return this.def.cooldown > 0 ? Math.min(1, this.cooldown / this.def.cooldown) : 0;
+  }
+
+  get bursting(): boolean {
+    return this.burstLeft > 0;
   }
 
   /**

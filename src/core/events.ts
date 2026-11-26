@@ -1,20 +1,26 @@
 /**
- * Minimal typed event bus used to decouple gameplay systems from the HUD/audio
- * without threading callbacks through every constructor.
+ * Minimal typed event bus used to decouple gameplay systems from the HUD,
+ * audio and statistics without threading callbacks through every constructor.
  */
+export type KillCause = 'bullet' | 'split' | 'returned' | 'collateral' | 'friendly' | 'melee' | 'thrown' | 'ricochet' | 'transfer';
+
 export type GameEventMap = {
-  'enemy:killed': { remaining: number };
-  'enemy:spawned': { remaining: number };
-  'player:died': { reason: string };
+  'enemy:killed': { id: number; x: number; y: number; z: number; cause: KillCause; remaining: number };
+  'enemy:spawned': { id: number; x: number; y: number; z: number };
+  'player:died': { reason: string; x: number; y: number; z: number };
   'weapon:changed': { kind: string | null; ammo: number };
   'weapon:fired': { kind: string };
   'weapon:empty': {};
-  'glass:shattered': {};
-  'pickup': { kind: string };
+  'pickup': { kind: string; caught: boolean };
   'hotswitch': {};
+  'borrow:begin': {};
+  'borrow:end': { debt: number };
+  'borrow:repaid': {};
+  'bullet:near': { x: number; y: number; z: number };
+  'bullet:split': {};
+  'bullet:returned': {};
   'hitmarker': {};
   'level:complete': {};
-  'wave:announce': { index: number; total: number };
   'hint': { text: string; ms?: number };
 };
 
@@ -37,9 +43,5 @@ export class EventBus {
     const set = this.listeners.get(event);
     if (!set) return;
     for (const handler of set) handler(payload);
-  }
-
-  clear(): void {
-    this.listeners.clear();
   }
 }

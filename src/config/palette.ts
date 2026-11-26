@@ -1,43 +1,32 @@
 import { Color } from 'three';
 
 /**
- * The stark tri-color palette. This brutalist minimalism is a cognitive-load
- * reduction technique: high contrast lets the player subconsciously parse
- * geometry, projectile vectors, and threats instantly.
- *
- *  - Environment: pristine white / sterile grey, matte (unbaked-clay look).
- *  - Interactive objects (weapons, throwables, the player body): absolute black.
- *  - Hostile entities: bright emissive red, glossy like blood-red crystal.
+ * The palette is a reading aid before it is a style: paper-white world, ink
+ * black for everything you can pick up, signal red for everything that wants
+ * you dead. Two restrained accents mark places where time itself is different.
  */
 export const PALETTE = {
-  /** Sky / background clear color. */
-  background: new Color(0xeef0f2),
-  fog: new Color(0xe7e9ec),
+  background: new Color(0xf1f1ee),
+  fog: new Color(0xecebe7),
 
-  envWhite: new Color(0xffffff),
-  envLight: new Color(0xf2f3f5),
-  envGrey: new Color(0xd2d5da),
-  envDarkGrey: new Color(0xb4b8bf),
+  envWhite: new Color(0xfbfaf7),
+  envLight: new Color(0xf0efeb),
+  envGrey: new Color(0xd4d3cf),
+  envDarkGrey: new Color(0xa9a9a6),
 
-  /** All weaponizable / interactive objects. */
-  interactiveBlack: new Color(0x0a0a0c),
+  ink: new Color(0x0b0b0e),
 
-  /** Hostile entity body. */
-  enemyRed: new Color(0xff1f3d),
-  enemyRedEmissive: new Color(0xb20018),
+  enemyRed: new Color(0xf5152f),
+  enemyCore: new Color(0xff5a3c),
 
-  /** Breakable glass tint. */
-  glass: new Color(0xbfe6ff),
+  glass: new Color(0xbfe1f0),
 
-  /** Bullet tracer core. */
-  bulletCore: new Color(0x101014),
-  bulletGlow: new Color(0x2a2a33),
+  /** Still fields — time pools here. */
+  fieldStill: new Color(0x7fc4e6),
+  /** Rush fields & Constants — time will not wait here. */
+  fieldRush: new Color(0xffa23a),
 
-  /** Weapon pickup highlight ring. */
-  pickupRing: new Color(0x000000),
-
-  /** UI accent (the iconic red). */
-  uiRed: '#ff1f3d',
-  uiWhite: '#f4f5f7',
-  uiDim: '#8a8f98',
+  uiRed: '#f5152f',
+  uiInk: '#0b0b0e',
+  uiPaper: '#f1f1ee',
 } as const;
